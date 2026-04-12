@@ -11,6 +11,7 @@
   "dependencies": {
     "axios": "^1.15.0",
     "expo": "~54.0.33",
+    "expo-build-properties": "^55.0.13",
     "expo-camera": "~17.0.10",
     "expo-constants": "~17.0.8",
     "expo-image-picker": "~17.0.10",
