@@ -23,6 +23,7 @@ export default function RootLayout() {
       <Stack.Screen name="arbeit-erstellen" />
       <Stack.Screen name="scanner" />
       <Stack.Screen name="korrektur" />
+      <Stack.Screen name="arbeit/[id]" />
     </Stack>
   );
 }

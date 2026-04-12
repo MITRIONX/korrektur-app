@@ -8,6 +8,7 @@ export interface Klasse {
   id: number;
   name: string;
   schuljahr: string;
+  maskottchen?: string | null;
 }
 
 export interface Schueler {

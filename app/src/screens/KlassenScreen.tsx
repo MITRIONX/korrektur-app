@@ -25,7 +25,9 @@ export function KlassenScreen() {
   const [loading, setLoading] = useState(false);
 
   // Klasse creation
-  const [neueKlasseName, setNeueKlasseName] = useState('');
+  const [einschulungsjahr, setEinschulungsjahr] = useState('');
+  const [suffix, setSuffix] = useState('');
+  const [maskottchen, setMaskottchen] = useState('');
   const [klasseCreating, setKlasseCreating] = useState(false);
 
   // Schueler creation
@@ -65,19 +67,42 @@ export function KlassenScreen() {
     }
   };
 
+  const getKlassenstufe = (jahr: string) => {
+    const ej = parseInt(jahr, 10);
+    if (isNaN(ej)) return '?';
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const month = now.getMonth() + 1; // 1-12
+    // Vor August = noch altes Schuljahr
+    const stufe = month >= 8 ? currentYear - ej + 1 : currentYear - ej;
+    return stufe > 0 ? stufe.toString() : '?';
+  };
+
+  const getKlassenName = (klasse: Klasse) => {
+    const stufe = getKlassenstufe(klasse.schuljahr);
+    return `Klasse ${stufe}${klasse.name}`;
+  };
+
   const handleCreateKlasse = async () => {
-    const name = neueKlasseName.trim();
-    if (!name) {
-      Alert.alert('Fehler', 'Bitte einen Klassennamen eingeben.');
+    const ej = einschulungsjahr.trim();
+    const s = suffix.trim().toLowerCase();
+    if (!ej || isNaN(parseInt(ej, 10))) {
+      Alert.alert('Fehler', 'Bitte ein gueltiges Einschulungsjahr eingeben (z.B. 2023).');
+      return;
+    }
+    if (!s) {
+      Alert.alert('Fehler', 'Bitte eine Bezeichnung eingeben (z.B. a, b, c).');
       return;
     }
     setKlasseCreating(true);
     try {
-      const neu = await createKlasse({ name, schuljahr: '2025/2026' });
+      const neu = await createKlasse({ name: s, schuljahr: ej, maskottchen: maskottchen.trim() || undefined });
       setKlassen((prev) => [...prev, neu]);
-      setNeueKlasseName('');
+      setEinschulungsjahr('');
+      setSuffix('');
+      setMaskottchen('');
     } catch (err: any) {
-      const message = err?.response?.data?.message || err?.message || 'Klasse konnte nicht erstellt werden.';
+      const message = err?.response?.data?.error || err?.message || 'Klasse konnte nicht erstellt werden.';
       Alert.alert('Fehler', message);
     } finally {
       setKlasseCreating(false);
@@ -122,7 +147,7 @@ export function KlassenScreen() {
           <Pressable style={styles.backButton} onPress={handleBackFromSchueler}>
             <Text style={styles.backButtonText}>← Klassen</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>{selectedKlasse.name}</Text>
+          <Text style={styles.headerTitle}>{getKlassenName(selectedKlasse)}</Text>
           <Pressable style={styles.closeButton} onPress={() => router.back()}>
             <Text style={styles.closeButtonText}>✕</Text>
           </Pressable>
@@ -199,27 +224,50 @@ export function KlassenScreen() {
       <View style={styles.content}>
         {/* Add Klasse Form */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Neue Klasse hinzufügen</Text>
+          <Text style={styles.sectionTitle}>Neue Klasse hinzufuegen</Text>
           <View style={styles.row}>
             <TextInput
-              style={[styles.input, styles.inputFlex]}
-              placeholder="z.B. 3a"
+              style={[styles.input, { flex: 2 }]}
+              placeholder="Einschulung (z.B. 2023)"
               placeholderTextColor="#64748b"
-              value={neueKlasseName}
-              onChangeText={setNeueKlasseName}
+              value={einschulungsjahr}
+              onChangeText={setEinschulungsjahr}
+              keyboardType="numeric"
+              maxLength={4}
             />
-            <Pressable
-              style={[styles.button, styles.buttonInline, (klasseCreating || !neueKlasseName.trim()) && styles.buttonDisabled]}
-              onPress={handleCreateKlasse}
-              disabled={klasseCreating || !neueKlasseName.trim()}
-            >
-              {klasseCreating ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.buttonText}>Hinzufügen</Text>
-              )}
-            </Pressable>
+            <TextInput
+              style={[styles.input, { flex: 1 }]}
+              placeholder="z.B. b"
+              placeholderTextColor="#64748b"
+              value={suffix}
+              onChangeText={setSuffix}
+              maxLength={3}
+              autoCapitalize="none"
+            />
           </View>
+          <TextInput
+            style={[styles.input, { marginTop: 8 }]}
+            placeholder="Maskottchen (z.B. Fuchs, Eule, Tiger...)"
+            placeholderTextColor="#64748b"
+            value={maskottchen}
+            onChangeText={setMaskottchen}
+          />
+          {einschulungsjahr.length === 4 && suffix.trim() && (
+            <Text style={styles.previewText}>
+              → Klasse {getKlassenstufe(einschulungsjahr)}{suffix.trim().toLowerCase()}
+            </Text>
+          )}
+          <Pressable
+            style={[styles.button, (klasseCreating || !einschulungsjahr.trim() || !suffix.trim()) && styles.buttonDisabled]}
+            onPress={handleCreateKlasse}
+            disabled={klasseCreating || !einschulungsjahr.trim() || !suffix.trim()}
+          >
+            {klasseCreating ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.buttonText}>Klasse hinzufuegen</Text>
+            )}
+          </Pressable>
         </View>
 
         {/* Klassen List */}
@@ -235,9 +283,11 @@ export function KlassenScreen() {
             }
             renderItem={({ item }) => (
               <Pressable style={styles.listItem} onPress={() => loadSchueler(item)}>
-                <View>
-                  <Text style={styles.listItemText}>{item.name}</Text>
-                  <Text style={styles.listItemSubtext}>{item.schuljahr}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.listItemText}>{getKlassenName(item)}</Text>
+                  <Text style={styles.listItemSubtext}>
+                    {item.maskottchen ? `${item.maskottchen} · ` : ''}Einschulung {item.schuljahr}
+                  </Text>
                 </View>
                 <Text style={styles.chevron}>›</Text>
               </Pressable>
@@ -372,6 +422,12 @@ const styles = StyleSheet.create({
     color: '#64748b',
     fontSize: 22,
     fontWeight: '300',
+  },
+  previewText: {
+    color: '#10b981',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 10,
   },
   emptyText: {
     color: '#64748b',

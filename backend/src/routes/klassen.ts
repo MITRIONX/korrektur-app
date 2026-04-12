@@ -22,7 +22,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
 
 // POST / - create a new klasse
 router.post('/', async (req: AuthRequest, res: Response) => {
-  const { name, schuljahr } = req.body as { name?: string; schuljahr?: string };
+  const { name, schuljahr, maskottchen } = req.body as { name?: string; schuljahr?: string; maskottchen?: string };
 
   if (!name || !schuljahr) {
     return res.status(400).json({ error: 'name and schuljahr are required' });
@@ -30,8 +30,8 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 
   try {
     const result = await query(
-      'INSERT INTO klassen (name, schuljahr, user_id) VALUES ($1, $2, $3) RETURNING *',
-      [name, schuljahr, req.userId]
+      'INSERT INTO klassen (name, schuljahr, maskottchen, user_id) VALUES ($1, $2, $3, $4) RETURNING *',
+      [name, schuljahr, maskottchen || null, req.userId]
     );
     return res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -59,16 +59,18 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
 
 // PUT /:id - update klasse (only provided fields)
 router.put('/:id', async (req: AuthRequest, res: Response) => {
-  const { name, schuljahr } = req.body as { name?: string; schuljahr?: string };
+  const { name, schuljahr, maskottchen } = req.body as { name?: string; schuljahr?: string; maskottchen?: string };
 
   try {
     const result = await query(
       `UPDATE klassen
        SET name = COALESCE($1, name),
-           schuljahr = COALESCE($2, schuljahr)
-       WHERE id = $3 AND user_id = $4
+           schuljahr = COALESCE($2, schuljahr),
+           maskottchen = COALESCE($3, maskottchen),
+           updated_at = NOW()
+       WHERE id = $4 AND user_id = $5
        RETURNING *`,
-      [name ?? null, schuljahr ?? null, req.params.id, req.userId]
+      [name ?? null, schuljahr ?? null, maskottchen ?? null, req.params.id, req.userId]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Klasse not found' });

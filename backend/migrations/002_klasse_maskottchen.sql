@@ -1,0 +1,1 @@
+ALTER TABLE klassen ADD COLUMN IF NOT EXISTS maskottchen TEXT;
