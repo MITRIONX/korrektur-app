@@ -7,6 +7,7 @@ import authRoutes from './routes/auth';
 import klassenRoutes from './routes/klassen';
 import schuelerRoutes from './routes/schueler';
 import arbeitenRoutes from './routes/arbeiten';
+import scansRoutes from './routes/scans';
 
 const app = express();
 
@@ -38,6 +39,9 @@ app.use('/api/klassen/:klasseId/schueler', schuelerRoutes);
 
 // Arbeiten routes
 app.use('/api/arbeiten', arbeitenRoutes);
+
+// Scans routes (mounted at same /api/arbeiten prefix, handles /:arbeitId/scans)
+app.use('/api/arbeiten', scansRoutes);
 
 // Start server only when run directly
 if (require.main === module) {
