@@ -14,8 +14,10 @@ import {
   View,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
+import { WebView } from 'react-native-webview';
 import { useRouter } from 'expo-router';
 import { getKlassen, getSchueler, createArbeit, uploadArbeitPdf, generateArbeitPdfs } from '../services/api';
+import { useAuthStore } from '../store/auth';
 import { Klasse, Schueler } from '../types';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -231,38 +233,33 @@ export function ArbeitErstellenScreen() {
           <Text style={styles.headerTitle}>QR-Code platzieren</Text>
           <Text style={styles.stepText}>2/3</Text>
         </View>
-        <ScrollView style={styles.scroll} contentContainerStyle={{ alignItems: 'center', paddingBottom: 40 }}>
-          <Text style={styles.hint}>Ziehe den QR-Code an die gewuenschte Position auf dem Arbeitsblatt</Text>
+        <View style={{ flex: 1, padding: 12 }}>
+          <Text style={styles.hint}>Ziehe den QR-Code an die gewuenschte Position</Text>
 
-          {/* PDF Preview with draggable QR */}
+          {/* PDF with draggable QR overlay */}
           <View style={[styles.pdfPreview, { width: previewWidth, height: previewHeight }]}>
-            {/* Simulated PDF background */}
-            <View style={styles.pdfContent}>
-              <Text style={styles.pdfTitle}>{titel || 'Arbeitsblatt'}</Text>
-              <Text style={styles.pdfSubtitle}>{fach} · {maxPunkte} Punkte</Text>
-              <View style={styles.pdfLine} />
-              <View style={styles.pdfLine} />
-              <View style={[styles.pdfLine, { width: '60%' }]} />
-              <View style={{ height: 20 }} />
-              <View style={styles.pdfLine} />
-              <View style={styles.pdfLine} />
-              <View style={[styles.pdfLine, { width: '80%' }]} />
-            </View>
+            {/* PDF via WebView using local file URI */}
+            <WebView
+              source={{ uri: pdfUri || '' }}
+              style={{ flex: 1, backgroundColor: '#fff' }}
+              startInLoadingState={true}
+              renderLoading={() => <ActivityIndicator color="#3b82f6" size="large" style={{ position: 'absolute', top: '45%', left: '45%' }} />}
+            />
 
-            {/* Draggable QR Code */}
-            <View
-              {...panResponder.panHandlers}
-              style={[styles.qrDraggable, { left: qrPos.x, top: qrPos.y }]}
-            >
-              <View style={styles.qrBox}>
-                <Text style={styles.qrIcon}>◻◻◻{'\n'}◻◻◻{'\n'}◻◻◻</Text>
+            {/* Draggable QR Code overlay */}
+            <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+              <View
+                {...panResponder.panHandlers}
+                style={[styles.qrDraggable, { left: qrPos.x, top: qrPos.y }]}
+              >
+                <View style={styles.qrBox}>
+                  <Text style={styles.qrIcon}>▪▪▪{'\n'}▪▪▪{'\n'}▪▪▪</Text>
+                </View>
+                <Text style={styles.qrName}>Max Mustermann</Text>
               </View>
-              <Text style={styles.qrName}>Max Mustermann</Text>
             </View>
           </View>
-
-          <Text style={styles.positionInfo}>Position: {qrX}% / {qrY}%</Text>
-        </ScrollView>
+        </View>
         <View style={styles.footer}>
           <Pressable style={styles.submitBtn} onPress={handleStep2Next}>
             <Text style={styles.submitText}>Weiter → Schueler auswaehlen</Text>

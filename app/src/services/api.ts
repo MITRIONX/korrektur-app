@@ -105,6 +105,15 @@ export const createArbeit = async (data: Omit<Arbeit, 'id'>): Promise<Arbeit> =>
   return res.data;
 };
 
+export const updateArbeit = async (arbeitId: number, data: Partial<Arbeit>): Promise<Arbeit> => {
+  const res = await apiClient.put(`/arbeiten/${arbeitId}`, data);
+  return res.data;
+};
+
+export const deleteArbeit = async (arbeitId: number): Promise<void> => {
+  await apiClient.delete(`/arbeiten/${arbeitId}`);
+};
+
 export const getArbeit = async (arbeitId: number): Promise<Arbeit> => {
   const res = await apiClient.get(`/arbeiten/${arbeitId}`);
   return res.data;

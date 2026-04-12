@@ -219,6 +219,38 @@ router.get('/:id/qr-codes', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// GET /:id/pdf - serve the uploaded template PDF
+router.get('/:id/pdf', async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await query(
+      `SELECT a.pdf_pfad FROM arbeiten a JOIN klassen k ON a.klasse_id = k.id WHERE a.id = $1 AND k.user_id = $2`,
+      [req.params.id, req.userId]
+    );
+    if (result.rows.length === 0 || !result.rows[0].pdf_pfad) {
+      return res.status(404).json({ error: 'PDF not found' });
+    }
+    return res.sendFile(path.resolve(result.rows[0].pdf_pfad));
+  } catch (err) {
+    console.error('GET /arbeiten/:id/pdf error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// DELETE /:id - delete arbeit
+router.delete('/:id', async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await query(
+      `DELETE FROM arbeiten WHERE id = $1 AND klasse_id IN (SELECT id FROM klassen WHERE user_id = $2) RETURNING id`,
+      [req.params.id, req.userId]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Arbeit not found' });
+    return res.status(204).send();
+  } catch (err) {
+    console.error('DELETE /arbeiten/:id error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // POST /:id/upload-pdf - upload template PDF for an arbeit
 router.post('/:id/upload-pdf', pdfUpload.single('pdf'), async (req: AuthRequest, res: Response) => {
   try {

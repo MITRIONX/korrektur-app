@@ -29,6 +29,9 @@ export interface Arbeit {
   musterloesung?: string;
   notenschluessel?: Record<string, number>;
   status: 'entwurf' | 'scannen' | 'korrigieren' | 'pruefen' | 'fertig';
+  pdf_pfad?: string | null;
+  qr_position_x?: number;
+  qr_position_y?: number;
 }
 
 export interface ScanSeite {
