@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { useAuthStore } from '../src/store/auth';
+import { checkForUpdate } from '../src/lib/updater';
 
 export default function RootLayout() {
   const { token, loadToken } = useAuthStore();
@@ -8,6 +9,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     loadToken().finally(() => setLoading(false));
+    checkForUpdate();
   }, []);
 
   if (loading) return null;
