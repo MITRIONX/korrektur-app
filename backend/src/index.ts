@@ -8,6 +8,7 @@ import klassenRoutes from './routes/klassen';
 import schuelerRoutes from './routes/schueler';
 import arbeitenRoutes from './routes/arbeiten';
 import scansRoutes from './routes/scans';
+import korrekturenRoutes from './routes/korrekturen';
 
 const app = express();
 
@@ -42,6 +43,9 @@ app.use('/api/arbeiten', arbeitenRoutes);
 
 // Scans routes (mounted at same /api/arbeiten prefix, handles /:arbeitId/scans)
 app.use('/api/arbeiten', scansRoutes);
+
+// Korrekturen routes (handles /scans/:id/* and /korrekturen/:id/*)
+app.use('/api', korrekturenRoutes);
 
 // Start server only when run directly
 if (require.main === module) {
