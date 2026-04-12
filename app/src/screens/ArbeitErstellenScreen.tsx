@@ -197,7 +197,14 @@ export function ArbeitErstellenScreen() {
     return <SafeAreaView style={styles.container}><ActivityIndicator color="#3b82f6" size="large" style={{ marginTop: 100 }} /></SafeAreaView>;
   }
 
-  // Aufgabe edit helpers
+  // Aufgabe edit state
+  const [editAnswers, setEditAnswers] = useState<string[]>([]);
+  const [editPairs, setEditPairs] = useState<{ left: string; right: string }[]>([]);
+  const [editIsFrei, setEditIsFrei] = useState(false);
+  const [editFreiKriterien, setEditFreiKriterien] = useState('');
+
+  const AUFGABEN_TYPEN = ['einkreisen', 'unterstreichen', 'zuordnung', 'lueckentext', 'konjugation', 'definition', 'rechnung', 'ankreuzen', 'schreiben', 'zeichnen', 'frei'];
+
   const openEditAufgabe = (idx: number) => {
     const a = analyse?.aufgaben?.[idx];
     if (!a) return;
@@ -205,27 +212,64 @@ export function ArbeitErstellenScreen() {
     setEditBeschreibung(a.beschreibung || '');
     setEditPunkte(String(a.max_punkte || 0));
     setEditTyp(a.typ || '');
-    setEditLoesungen(typeof a.loesungen === 'string' ? a.loesungen : JSON.stringify(a.loesungen, null, 0));
+
+    // Detect answer format
+    if (a.typ === 'frei' || a.typ === 'definition') {
+      setEditIsFrei(true);
+      setEditFreiKriterien(typeof a.loesungen === 'string' ? a.loesungen : (Array.isArray(a.loesungen) ? a.loesungen.join('\n') : JSON.stringify(a.loesungen)));
+      setEditAnswers([]);
+      setEditPairs([]);
+    } else if (typeof a.loesungen === 'object' && !Array.isArray(a.loesungen) && a.loesungen !== null) {
+      // Object with keys = pairs/zuordnung
+      setEditIsFrei(false);
+      const keys = Object.keys(a.loesungen);
+      const pairs: { left: string; right: string }[] = [];
+      keys.forEach(k => {
+        const vals = Array.isArray(a.loesungen[k]) ? a.loesungen[k] : [a.loesungen[k]];
+        vals.forEach((v: string) => pairs.push({ left: k, right: String(v) }));
+      });
+      setEditPairs(pairs.length > 0 ? pairs : [{ left: '', right: '' }]);
+      setEditAnswers([]);
+    } else {
+      setEditIsFrei(false);
+      const answers = Array.isArray(a.loesungen) ? a.loesungen.map(String) : [String(a.loesungen || '')];
+      setEditAnswers(answers.length > 0 ? answers : ['']);
+      setEditPairs([]);
+    }
   };
 
   const saveEditAufgabe = () => {
     if (editingAufgabe === null || !analyse) return;
     const updated = { ...analyse };
     const aufgaben = [...updated.aufgaben];
-    let parsedLoesungen: any = editLoesungen;
-    try { parsedLoesungen = JSON.parse(editLoesungen); } catch {}
+
+    let loesungen: any;
+    if (editIsFrei) {
+      loesungen = editFreiKriterien;
+    } else if (editPairs.length > 0 && editPairs[0].left) {
+      // Build object from pairs
+      const obj: Record<string, string[]> = {};
+      editPairs.forEach(p => {
+        if (!p.left.trim()) return;
+        if (!obj[p.left.trim()]) obj[p.left.trim()] = [];
+        if (p.right.trim()) obj[p.left.trim()].push(p.right.trim());
+      });
+      loesungen = obj;
+    } else {
+      loesungen = editAnswers.filter(a => a.trim());
+    }
+
     aufgaben[editingAufgabe] = {
       ...aufgaben[editingAufgabe],
       beschreibung: editBeschreibung,
       max_punkte: parseInt(editPunkte, 10) || 0,
       typ: editTyp,
-      loesungen: parsedLoesungen,
+      loesungen,
     };
     updated.aufgaben = aufgaben;
     updated.empfohlene_max_punkte = aufgaben.reduce((s: number, a: any) => s + (a.max_punkte || 0), 0);
     setAnalyse(updated);
     setEditingAufgabe(null);
-    // Save to backend
     if (arbeitId) {
       updateArbeit(arbeitId, { musterloesung: JSON.stringify(updated), max_punkte: updated.empfohlene_max_punkte } as any).catch(() => {});
     }
@@ -259,37 +303,115 @@ export function ArbeitErstellenScreen() {
 
   // ===== STEP: Analyse =====
   if (step === 'analyse') {
-    // Edit modal
+    // Edit screen
     if (editingAufgabe !== null) {
+      const switchToZuordnung = () => {
+        if (editPairs.length === 0) setEditPairs([{ left: '', right: '' }]);
+        setEditAnswers([]);
+        setEditIsFrei(false);
+      };
+      const switchToListe = () => {
+        if (editAnswers.length === 0) setEditAnswers(['']);
+        setEditPairs([]);
+        setEditIsFrei(false);
+      };
+
       return (
         <SafeAreaView style={styles.container}>
           <View style={styles.header}>
             <Pressable onPress={() => setEditingAufgabe(null)}><Text style={styles.backText}>← Abbrechen</Text></Pressable>
-            <Text style={styles.headerTitle}>Aufgabe bearbeiten</Text>
+            <Text style={styles.headerTitle}>Aufgabe {(editingAufgabe || 0) + 1}</Text>
             <Pressable onPress={saveEditAufgabe}><Text style={{ color: '#10b981', fontSize: 15, fontWeight: '700' }}>Speichern</Text></Pressable>
           </View>
           <ScrollView style={styles.scroll} contentContainerStyle={{ paddingBottom: 40 }}>
             <Text style={styles.label}>Beschreibung</Text>
-            <TextInput style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+            <TextInput style={[styles.input, { height: 70, textAlignVertical: 'top' }]}
               value={editBeschreibung} onChangeText={setEditBeschreibung} multiline placeholderTextColor="#64748b" />
 
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.label}>Max. Punkte</Text>
-                <TextInput style={styles.input} value={editPunkte} onChangeText={setEditPunkte}
-                  keyboardType="numeric" placeholderTextColor="#64748b" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.label}>Typ</Text>
-                <TextInput style={styles.input} value={editTyp} onChangeText={setEditTyp}
-                  placeholderTextColor="#64748b" />
-              </View>
+            <Text style={styles.label}>Max. Punkte</Text>
+            <TextInput style={styles.input} value={editPunkte} onChangeText={setEditPunkte}
+              keyboardType="numeric" placeholderTextColor="#64748b" />
+
+            <Text style={styles.label}>Aufgabentyp</Text>
+            <View style={styles.chipRow}>
+              {AUFGABEN_TYPEN.map(t => (
+                <Pressable key={t} style={[styles.chip, editTyp === t && styles.chipActive]}
+                  onPress={() => {
+                    setEditTyp(t);
+                    if (t === 'frei' || t === 'definition') { setEditIsFrei(true); setEditAnswers([]); setEditPairs([]); }
+                    else { setEditIsFrei(false); }
+                  }}>
+                  <Text style={[styles.chipText, editTyp === t && styles.chipTextActive]}>{t}</Text>
+                </Pressable>
+              ))}
             </View>
 
-            <Text style={styles.label}>Korrekte Loesungen</Text>
-            <TextInput style={[styles.input, { height: 120, textAlignVertical: 'top', fontFamily: 'monospace', fontSize: 13 }]}
-              value={editLoesungen} onChangeText={setEditLoesungen} multiline placeholderTextColor="#64748b"
-              placeholder='["Antwort 1", "Antwort 2"] oder Freitext' />
+            {editIsFrei ? (
+              <>
+                <Text style={styles.label}>Bewertungskriterien</Text>
+                <Text style={{ color: '#64748b', fontSize: 12, marginBottom: 8 }}>Beschreibe worauf die KI achten soll</Text>
+                <TextInput style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
+                  value={editFreiKriterien} onChangeText={setEditFreiKriterien} multiline
+                  placeholder="z.B. Kind soll erklaeren was Verben sind. Muss Handlung/Taetigkeit erwaehnen."
+                  placeholderTextColor="#64748b" />
+              </>
+            ) : (
+              <>
+                <Text style={styles.label}>Antwort-Modus</Text>
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                  <Pressable style={[styles.chip, editPairs.length === 0 && styles.chipActive]} onPress={switchToListe}>
+                    <Text style={[styles.chipText, editPairs.length === 0 && styles.chipTextActive]}>Liste</Text>
+                  </Pressable>
+                  <Pressable style={[styles.chip, editPairs.length > 0 && styles.chipActive]} onPress={switchToZuordnung}>
+                    <Text style={[styles.chipText, editPairs.length > 0 && styles.chipTextActive]}>Zuordnung (2 Spalten)</Text>
+                  </Pressable>
+                </View>
+
+                {editPairs.length > 0 ? (
+                  <>
+                    <View style={{ flexDirection: 'row', marginBottom: 6 }}>
+                      <Text style={{ color: '#94a3b8', fontSize: 11, flex: 1 }}>LINKS</Text>
+                      <Text style={{ color: '#94a3b8', fontSize: 11, flex: 1, marginLeft: 8 }}>RECHTS</Text>
+                    </View>
+                    {editPairs.map((p, i) => (
+                      <View key={i} style={{ flexDirection: 'row', gap: 8, marginBottom: 6, alignItems: 'center' }}>
+                        <TextInput style={[styles.input, { flex: 1, marginBottom: 0 }]} value={p.left}
+                          onChangeText={t => { const u = [...editPairs]; u[i] = { ...u[i], left: t }; setEditPairs(u); }}
+                          placeholder="z.B. Einzahl" placeholderTextColor="#64748b" />
+                        <Text style={{ color: '#64748b' }}>→</Text>
+                        <TextInput style={[styles.input, { flex: 1, marginBottom: 0 }]} value={p.right}
+                          onChangeText={t => { const u = [...editPairs]; u[i] = { ...u[i], right: t }; setEditPairs(u); }}
+                          placeholder="z.B. Mehrzahl" placeholderTextColor="#64748b" />
+                        <Pressable onPress={() => setEditPairs(editPairs.filter((_, j) => j !== i))} hitSlop={8}>
+                          <Text style={{ color: '#ef4444', fontSize: 16 }}>✕</Text>
+                        </Pressable>
+                      </View>
+                    ))}
+                    <Pressable onPress={() => setEditPairs([...editPairs, { left: '', right: '' }])}
+                      style={{ padding: 10, alignItems: 'center' }}>
+                      <Text style={{ color: '#3b82f6', fontSize: 14 }}>+ Zeile</Text>
+                    </Pressable>
+                  </>
+                ) : (
+                  <>
+                    {editAnswers.map((a, i) => (
+                      <View key={i} style={{ flexDirection: 'row', gap: 8, marginBottom: 6, alignItems: 'center' }}>
+                        <TextInput style={[styles.input, { flex: 1, marginBottom: 0 }]} value={a}
+                          onChangeText={t => { const u = [...editAnswers]; u[i] = t; setEditAnswers(u); }}
+                          placeholder={`Antwort ${i + 1}`} placeholderTextColor="#64748b" />
+                        <Pressable onPress={() => setEditAnswers(editAnswers.filter((_, j) => j !== i))} hitSlop={8}>
+                          <Text style={{ color: '#ef4444', fontSize: 16 }}>✕</Text>
+                        </Pressable>
+                      </View>
+                    ))}
+                    <Pressable onPress={() => setEditAnswers([...editAnswers, ''])}
+                      style={{ padding: 10, alignItems: 'center' }}>
+                      <Text style={{ color: '#3b82f6', fontSize: 14 }}>+ Antwort</Text>
+                    </Pressable>
+                  </>
+                )}
+              </>
+            )}
           </ScrollView>
         </SafeAreaView>
       );
