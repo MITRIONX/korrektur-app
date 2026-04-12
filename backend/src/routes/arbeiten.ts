@@ -371,18 +371,29 @@ router.post('/:id/generate-pdfs', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// GET /:id/download-pdf - download the generated combined PDF
+// GET /:id/download-pdf - download the generated combined PDF (token via query param for browser access)
 router.get('/:id/download-pdf', async (req: AuthRequest, res: Response) => {
   try {
+    // Support token via query param (for browser/Linking.openURL)
+    let userId = req.userId;
+    if (!userId && req.query.token) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const payload = jwt.verify(String(req.query.token), config.jwtSecret) as { userId: number };
+        userId = payload.userId;
+      } catch { return res.status(401).json({ error: 'Invalid token' }); }
+    }
+    if (!userId) return res.status(401).json({ error: 'Token required' });
+
     const arbeitResult = await query(
       `SELECT a.id FROM arbeiten a JOIN klassen k ON a.klasse_id = k.id WHERE a.id = $1 AND k.user_id = $2`,
-      [req.params.id, req.userId]
+      [req.params.id, userId]
     );
     if (arbeitResult.rows.length === 0) return res.status(404).json({ error: 'Arbeit not found' });
 
     const id = String(req.params.id);
     const pdfPath = path.join(config.uploadDir, 'pdfs', id, `arbeit-${id}-alle.pdf`);
-    if (!fs.existsSync(pdfPath)) return res.status(404).json({ error: 'PDF noch nicht generiert' });
+    if (!fs.existsSync(pdfPath)) return res.status(404).json({ error: 'PDF noch nicht generiert. Bitte zuerst PDFs generieren.' });
 
     return res.download(pdfPath, `arbeit-${id}.pdf`);
   } catch (err) {
