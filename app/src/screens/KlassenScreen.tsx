@@ -3,436 +3,344 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Modal,
   Pressable,
+  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { getKlassen, createKlasse, getSchueler, createSchueler } from '../services/api';
+import {
+  getKlassen, createKlasse, updateKlasse, deleteKlasse,
+  getSchueler, createSchueler, updateSchueler, schuelerAustreten,
+} from '../services/api';
 import { Klasse, Schueler } from '../types';
 
-type View = 'klassen' | 'schueler';
+type ScreenView = 'klassen' | 'schueler';
+
+function getKlassenstufe(einschulungsjahr: string): string {
+  const ej = parseInt(einschulungsjahr, 10);
+  if (isNaN(ej)) return '?';
+  const now = new Date();
+  const stufe = now.getMonth() + 1 >= 8
+    ? now.getFullYear() - ej + 1
+    : now.getFullYear() - ej;
+  return stufe > 0 ? stufe.toString() : '?';
+}
+
+function getKlassenName(k: Klasse): string {
+  return `Klasse ${getKlassenstufe(k.schuljahr)}${k.name}`;
+}
+
+function getKlassenDisplay(k: Klasse): string {
+  const name = getKlassenName(k);
+  return k.maskottchen ? `${name} (${k.maskottchen})` : name;
+}
 
 export function KlassenScreen() {
   const router = useRouter();
-
-  const [view, setView] = useState<View>('klassen');
+  const [view, setView] = useState<ScreenView>('klassen');
   const [klassen, setKlassen] = useState<Klasse[]>([]);
   const [selectedKlasse, setSelectedKlasse] = useState<Klasse | null>(null);
   const [schueler, setSchueler] = useState<Schueler[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Klasse creation
+  // Create klasse
   const [einschulungsjahr, setEinschulungsjahr] = useState('');
   const [suffix, setSuffix] = useState('');
   const [maskottchen, setMaskottchen] = useState('');
-  const [klasseCreating, setKlasseCreating] = useState(false);
+  const [creating, setCreating] = useState(false);
 
-  // Schueler creation
+  // Edit modal
+  const [editModal, setEditModal] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editJahr, setEditJahr] = useState('');
+  const [editMaskottchen, setEditMaskottchen] = useState('');
+  const [editingKlasse, setEditingKlasse] = useState<Klasse | null>(null);
+
+  // Create schueler
   const [neuerVorname, setNeuerVorname] = useState('');
   const [neuerNachname, setNeuerNachname] = useState('');
-  const [schuelerCreating, setSchuelerCreating] = useState(false);
 
-  useEffect(() => {
-    loadKlassen();
-  }, []);
+  useEffect(() => { loadKlassen(); }, []);
 
   const loadKlassen = async () => {
     setLoading(true);
-    try {
-      const data = await getKlassen();
-      setKlassen(data);
-    } catch (err: any) {
-      const message = err?.response?.data?.message || err?.message || 'Klassen konnten nicht geladen werden.';
-      Alert.alert('Fehler', message);
-    } finally {
-      setLoading(false);
-    }
+    try { setKlassen(await getKlassen()); }
+    catch (e: any) { Alert.alert('Fehler', e?.response?.data?.error || e?.message); }
+    finally { setLoading(false); }
   };
 
   const loadSchueler = async (klasse: Klasse) => {
-    setLoading(true);
     setSelectedKlasse(klasse);
     setView('schueler');
-    try {
-      const data = await getSchueler(klasse.id);
-      setSchueler(data);
-    } catch (err: any) {
-      const message = err?.response?.data?.message || err?.message || 'Schüler konnten nicht geladen werden.';
-      Alert.alert('Fehler', message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getKlassenstufe = (jahr: string) => {
-    const ej = parseInt(jahr, 10);
-    if (isNaN(ej)) return '?';
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const month = now.getMonth() + 1; // 1-12
-    // Vor August = noch altes Schuljahr
-    const stufe = month >= 8 ? currentYear - ej + 1 : currentYear - ej;
-    return stufe > 0 ? stufe.toString() : '?';
-  };
-
-  const getKlassenName = (klasse: Klasse) => {
-    const stufe = getKlassenstufe(klasse.schuljahr);
-    return `Klasse ${stufe}${klasse.name}`;
+    setLoading(true);
+    try { setSchueler(await getSchueler(klasse.id)); }
+    catch (e: any) { Alert.alert('Fehler', e?.response?.data?.error || e?.message); }
+    finally { setLoading(false); }
   };
 
   const handleCreateKlasse = async () => {
     const ej = einschulungsjahr.trim();
     const s = suffix.trim().toLowerCase();
-    if (!ej || isNaN(parseInt(ej, 10))) {
-      Alert.alert('Fehler', 'Bitte ein gueltiges Einschulungsjahr eingeben (z.B. 2023).');
+    if (!ej || isNaN(parseInt(ej, 10)) || !s) {
+      Alert.alert('Fehler', 'Einschulungsjahr und Bezeichnung sind Pflicht.');
       return;
     }
-    if (!s) {
-      Alert.alert('Fehler', 'Bitte eine Bezeichnung eingeben (z.B. a, b, c).');
-      return;
-    }
-    setKlasseCreating(true);
+    setCreating(true);
     try {
       const neu = await createKlasse({ name: s, schuljahr: ej, maskottchen: maskottchen.trim() || undefined });
-      setKlassen((prev) => [...prev, neu]);
-      setEinschulungsjahr('');
-      setSuffix('');
-      setMaskottchen('');
-    } catch (err: any) {
-      const message = err?.response?.data?.error || err?.message || 'Klasse konnte nicht erstellt werden.';
-      Alert.alert('Fehler', message);
-    } finally {
-      setKlasseCreating(false);
-    }
+      setKlassen(prev => [...prev, neu]);
+      setEinschulungsjahr(''); setSuffix(''); setMaskottchen('');
+    } catch (e: any) { Alert.alert('Fehler', e?.response?.data?.error || e?.message); }
+    finally { setCreating(false); }
+  };
+
+  const openEditKlasse = (k: Klasse) => {
+    setEditingKlasse(k);
+    setEditName(k.name);
+    setEditJahr(k.schuljahr);
+    setEditMaskottchen(k.maskottchen || '');
+    setEditModal(true);
+  };
+
+  const handleSaveKlasse = async () => {
+    if (!editingKlasse) return;
+    try {
+      const updated = await updateKlasse(editingKlasse.id, {
+        name: editName.trim(),
+        schuljahr: editJahr.trim(),
+        maskottchen: editMaskottchen.trim() || undefined,
+      });
+      setKlassen(prev => prev.map(k => k.id === updated.id ? updated : k));
+      setEditModal(false);
+    } catch (e: any) { Alert.alert('Fehler', e?.response?.data?.error || e?.message); }
+  };
+
+  const handleDeleteKlasse = (k: Klasse) => {
+    Alert.alert(
+      'Klasse loeschen?',
+      `${getKlassenDisplay(k)} wirklich loeschen? Alle Schueler und Arbeiten gehen verloren!`,
+      [
+        { text: 'Abbrechen', style: 'cancel' },
+        {
+          text: 'Loeschen', style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteKlasse(k.id);
+              setKlassen(prev => prev.filter(x => x.id !== k.id));
+            } catch (e: any) { Alert.alert('Fehler', e?.response?.data?.error || e?.message); }
+          }
+        },
+      ]
+    );
   };
 
   const handleCreateSchueler = async () => {
-    const vorname = neuerVorname.trim();
-    const nachname = neuerNachname.trim();
-    if (!vorname || !nachname) {
-      Alert.alert('Fehler', 'Bitte Vor- und Nachname eingeben.');
-      return;
-    }
-    if (!selectedKlasse) return;
-    setSchuelerCreating(true);
+    if (!selectedKlasse || !neuerVorname.trim() || !neuerNachname.trim()) return;
     try {
-      const neu = await createSchueler(selectedKlasse.id, { vorname, nachname });
-      setSchueler((prev) => [...prev, neu]);
-      setNeuerVorname('');
-      setNeuerNachname('');
-    } catch (err: any) {
-      const message = err?.response?.data?.message || err?.message || 'Schüler konnte nicht erstellt werden.';
-      Alert.alert('Fehler', message);
-    } finally {
-      setSchuelerCreating(false);
-    }
+      const neu = await createSchueler(selectedKlasse.id, { vorname: neuerVorname.trim(), nachname: neuerNachname.trim() });
+      setSchueler(prev => [...prev, neu]);
+      setNeuerVorname(''); setNeuerNachname('');
+    } catch (e: any) { Alert.alert('Fehler', e?.response?.data?.error || e?.message); }
   };
 
-  const handleBackFromSchueler = () => {
-    setView('klassen');
-    setSelectedKlasse(null);
-    setSchueler([]);
-    setNeuerVorname('');
-    setNeuerNachname('');
+  const handleAustreten = (s: Schueler) => {
+    if (!selectedKlasse) return;
+    Alert.alert(
+      'Schueler austragen?',
+      `${s.vorname} ${s.nachname} als ausgetreten markieren? Daten bleiben erhalten.`,
+      [
+        { text: 'Abbrechen', style: 'cancel' },
+        {
+          text: 'Austragen',
+          onPress: async () => {
+            try {
+              await schuelerAustreten(selectedKlasse.id, s.id);
+              setSchueler(prev => prev.filter(x => x.id !== s.id));
+            } catch (e: any) { Alert.alert('Fehler', e?.response?.data?.error || e?.message); }
+          }
+        },
+      ]
+    );
   };
 
+  // ===== SCHUELER VIEW =====
   if (view === 'schueler' && selectedKlasse) {
     return (
-      <View style={styles.container}>
-        {/* Header */}
+      <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <Pressable style={styles.backButton} onPress={handleBackFromSchueler}>
-            <Text style={styles.backButtonText}>← Klassen</Text>
+          <Pressable onPress={() => { setView('klassen'); setSelectedKlasse(null); }}>
+            <Text style={styles.backText}>← Klassen</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>{getKlassenName(selectedKlasse)}</Text>
-          <Pressable style={styles.closeButton} onPress={() => router.back()}>
-            <Text style={styles.closeButtonText}>✕</Text>
+          <Text style={styles.headerTitle}>{getKlassenDisplay(selectedKlasse)}</Text>
+          <Pressable onPress={() => router.back()}>
+            <Text style={styles.closeText}>✕</Text>
           </Pressable>
         </View>
 
         <View style={styles.content}>
-          {/* Add Schueler Form */}
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Neuen Schüler hinzufügen</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Vorname"
-              placeholderTextColor="#64748b"
-              value={neuerVorname}
-              onChangeText={setNeuerVorname}
-            />
-            <TextInput
-              style={[styles.input, { marginTop: 8 }]}
-              placeholder="Nachname"
-              placeholderTextColor="#64748b"
-              value={neuerNachname}
-              onChangeText={setNeuerNachname}
-            />
+            <Text style={styles.sectionTitle}>Schueler hinzufuegen</Text>
+            <View style={styles.row}>
+              <TextInput style={[styles.input, { flex: 1 }]} placeholder="Vorname" placeholderTextColor="#64748b"
+                value={neuerVorname} onChangeText={setNeuerVorname} />
+              <TextInput style={[styles.input, { flex: 1 }]} placeholder="Nachname" placeholderTextColor="#64748b"
+                value={neuerNachname} onChangeText={setNeuerNachname} />
+            </View>
             <Pressable
-              style={[styles.button, (schuelerCreating || !neuerVorname.trim() || !neuerNachname.trim()) && styles.buttonDisabled]}
+              style={[styles.btn, (!neuerVorname.trim() || !neuerNachname.trim()) && styles.btnDisabled]}
               onPress={handleCreateSchueler}
-              disabled={schuelerCreating || !neuerVorname.trim() || !neuerNachname.trim()}
-            >
-              {schuelerCreating ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.buttonText}>Schüler hinzufügen</Text>
-              )}
+              disabled={!neuerVorname.trim() || !neuerNachname.trim()}>
+              <Text style={styles.btnText}>Hinzufuegen</Text>
             </Pressable>
           </View>
 
-          {/* Schueler List */}
-          {loading ? (
-            <ActivityIndicator color="#3b82f6" size="large" style={{ marginTop: 32 }} />
-          ) : (
+          {loading ? <ActivityIndicator color="#3b82f6" size="large" style={{ marginTop: 32 }} /> : (
             <FlatList
               data={schueler}
-              keyExtractor={(item) => String(item.id)}
-              contentContainerStyle={styles.listContent}
-              ListEmptyComponent={
-                <Text style={styles.emptyText}>Noch keine Schüler in dieser Klasse.</Text>
-              }
+              keyExtractor={i => String(i.id)}
+              contentContainerStyle={{ gap: 8, paddingBottom: 24 }}
+              ListEmptyComponent={<Text style={styles.emptyText}>Noch keine Schueler.</Text>}
               renderItem={({ item }) => (
                 <View style={styles.listItem}>
-                  <Text style={styles.listItemText}>
-                    {item.nachname}, {item.vorname}
-                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.listItemText}>{item.nachname}, {item.vorname}</Text>
+                    {item.aktiv === false && <Text style={{ color: '#ef4444', fontSize: 11 }}>Ausgetreten</Text>}
+                  </View>
+                  <Pressable onPress={() => handleAustreten(item)} style={styles.actionBtn}>
+                    <Text style={styles.actionBtnText}>Austragen</Text>
+                  </Pressable>
                 </View>
               )}
             />
           )}
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
-  // Klassen view
+  // ===== KLASSEN VIEW =====
   return (
-    <View style={styles.container}>
-      {/* Header */}
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>← Zurück</Text>
+        <Pressable onPress={() => router.back()}>
+          <Text style={styles.backText}>← Zurueck</Text>
         </Pressable>
         <Text style={styles.headerTitle}>Klassen</Text>
         <View style={{ width: 60 }} />
       </View>
 
       <View style={styles.content}>
-        {/* Add Klasse Form */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Neue Klasse hinzufuegen</Text>
+          <Text style={styles.sectionTitle}>Neue Klasse</Text>
           <View style={styles.row}>
-            <TextInput
-              style={[styles.input, { flex: 2 }]}
-              placeholder="Einschulung (z.B. 2023)"
-              placeholderTextColor="#64748b"
-              value={einschulungsjahr}
-              onChangeText={setEinschulungsjahr}
-              keyboardType="numeric"
-              maxLength={4}
-            />
-            <TextInput
-              style={[styles.input, { flex: 1 }]}
-              placeholder="z.B. b"
-              placeholderTextColor="#64748b"
-              value={suffix}
-              onChangeText={setSuffix}
-              maxLength={3}
-              autoCapitalize="none"
-            />
+            <TextInput style={[styles.input, { flex: 2 }]} placeholder="Einschulung (z.B. 2023)"
+              placeholderTextColor="#64748b" value={einschulungsjahr} onChangeText={setEinschulungsjahr}
+              keyboardType="numeric" maxLength={4} />
+            <TextInput style={[styles.input, { flex: 1 }]} placeholder="z.B. b"
+              placeholderTextColor="#64748b" value={suffix} onChangeText={setSuffix}
+              maxLength={3} autoCapitalize="none" />
           </View>
-          <TextInput
-            style={[styles.input, { marginTop: 8 }]}
-            placeholder="Maskottchen (z.B. Fuchs, Eule, Tiger...)"
-            placeholderTextColor="#64748b"
-            value={maskottchen}
-            onChangeText={setMaskottchen}
-          />
+          <TextInput style={[styles.input, { marginTop: 8 }]} placeholder="Maskottchen (z.B. Fuchs)"
+            placeholderTextColor="#64748b" value={maskottchen} onChangeText={setMaskottchen} />
           {einschulungsjahr.length === 4 && suffix.trim() && (
             <Text style={styles.previewText}>
               → Klasse {getKlassenstufe(einschulungsjahr)}{suffix.trim().toLowerCase()}
+              {maskottchen.trim() ? ` (${maskottchen.trim()})` : ''}
             </Text>
           )}
           <Pressable
-            style={[styles.button, (klasseCreating || !einschulungsjahr.trim() || !suffix.trim()) && styles.buttonDisabled]}
+            style={[styles.btn, (creating || !einschulungsjahr.trim() || !suffix.trim()) && styles.btnDisabled]}
             onPress={handleCreateKlasse}
-            disabled={klasseCreating || !einschulungsjahr.trim() || !suffix.trim()}
-          >
-            {klasseCreating ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Text style={styles.buttonText}>Klasse hinzufuegen</Text>
-            )}
+            disabled={creating || !einschulungsjahr.trim() || !suffix.trim()}>
+            {creating ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.btnText}>Klasse erstellen</Text>}
           </Pressable>
         </View>
 
-        {/* Klassen List */}
-        {loading ? (
-          <ActivityIndicator color="#3b82f6" size="large" style={{ marginTop: 32 }} />
-        ) : (
+        {loading ? <ActivityIndicator color="#3b82f6" size="large" style={{ marginTop: 32 }} /> : (
           <FlatList
             data={klassen}
-            keyExtractor={(item) => String(item.id)}
-            contentContainerStyle={styles.listContent}
-            ListEmptyComponent={
-              <Text style={styles.emptyText}>Noch keine Klassen vorhanden.</Text>
-            }
+            keyExtractor={i => String(i.id)}
+            contentContainerStyle={{ gap: 8, paddingBottom: 24 }}
+            ListEmptyComponent={<Text style={styles.emptyText}>Noch keine Klassen.</Text>}
             renderItem={({ item }) => (
               <Pressable style={styles.listItem} onPress={() => loadSchueler(item)}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.listItemText}>{getKlassenName(item)}</Text>
-                  <Text style={styles.listItemSubtext}>
-                    {item.maskottchen ? `${item.maskottchen} · ` : ''}Einschulung {item.schuljahr}
-                  </Text>
+                  <Text style={styles.listItemText}>{getKlassenDisplay(item)}</Text>
+                  <Text style={styles.listItemSub}>Einschulung {item.schuljahr}</Text>
                 </View>
-                <Text style={styles.chevron}>›</Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <Pressable onPress={() => openEditKlasse(item)} style={styles.actionBtn}>
+                    <Text style={styles.actionBtnText}>✏️</Text>
+                  </Pressable>
+                  <Pressable onPress={() => handleDeleteKlasse(item)} style={[styles.actionBtn, { borderColor: '#ef4444' }]}>
+                    <Text style={[styles.actionBtnText, { color: '#ef4444' }]}>🗑️</Text>
+                  </Pressable>
+                </View>
               </Pressable>
             )}
           />
         )}
       </View>
-    </View>
+
+      {/* Edit Modal */}
+      <Modal visible={editModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Klasse bearbeiten</Text>
+            <TextInput style={styles.input} placeholder="Bezeichnung (z.B. b)" placeholderTextColor="#64748b"
+              value={editName} onChangeText={setEditName} />
+            <TextInput style={[styles.input, { marginTop: 8 }]} placeholder="Einschulungsjahr"
+              placeholderTextColor="#64748b" value={editJahr} onChangeText={setEditJahr} keyboardType="numeric" />
+            <TextInput style={[styles.input, { marginTop: 8 }]} placeholder="Maskottchen"
+              placeholderTextColor="#64748b" value={editMaskottchen} onChangeText={setEditMaskottchen} />
+            <View style={[styles.row, { marginTop: 16 }]}>
+              <Pressable style={[styles.btn, { flex: 1, backgroundColor: '#334155' }]} onPress={() => setEditModal(false)}>
+                <Text style={styles.btnText}>Abbrechen</Text>
+              </Pressable>
+              <Pressable style={[styles.btn, { flex: 1 }]} onPress={handleSaveKlasse}>
+                <Text style={styles.btnText}>Speichern</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f172a',
-  },
+  container: { flex: 1, backgroundColor: '#0f172a' },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 56,
-    paddingBottom: 16,
-    backgroundColor: '#1e293b',
-    borderBottomWidth: 1,
-    borderBottomColor: '#334155',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#1e293b',
+    borderBottomWidth: 1, borderBottomColor: '#334155',
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#f1f5f9',
-  },
-  backButton: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    minWidth: 60,
-  },
-  backButtonText: {
-    color: '#3b82f6',
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  closeButton: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    minWidth: 60,
-    alignItems: 'flex-end',
-  },
-  closeButtonText: {
-    color: '#94a3b8',
-    fontSize: 18,
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  card: {
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#94a3b8',
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-  },
-  input: {
-    backgroundColor: '#0f172a',
-    borderWidth: 1,
-    borderColor: '#334155',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: '#f1f5f9',
-    fontSize: 15,
-  },
-  inputFlex: {
-    flex: 1,
-  },
-  button: {
-    backgroundColor: '#3b82f6',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12,
-  },
-  buttonInline: {
-    marginTop: 0,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  listContent: {
-    gap: 8,
-    paddingBottom: 24,
-  },
+  headerTitle: { fontSize: 16, fontWeight: '700', color: '#f1f5f9' },
+  backText: { color: '#3b82f6', fontSize: 15 },
+  closeText: { color: '#94a3b8', fontSize: 18 },
+  content: { flex: 1, padding: 16 },
+  card: { backgroundColor: '#1e293b', borderRadius: 12, padding: 16, marginBottom: 16 },
+  sectionTitle: { fontSize: 13, fontWeight: '600', color: '#94a3b8', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
+  row: { flexDirection: 'row', gap: 8 },
+  input: { backgroundColor: '#0f172a', borderWidth: 1, borderColor: '#334155', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, color: '#f1f5f9', fontSize: 15 },
+  previewText: { color: '#10b981', fontSize: 14, fontWeight: '600', marginTop: 10 },
+  btn: { backgroundColor: '#3b82f6', borderRadius: 8, paddingVertical: 12, alignItems: 'center', marginTop: 12 },
+  btnDisabled: { opacity: 0.5 },
+  btnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   listItem: {
-    backgroundColor: '#1e293b',
-    borderRadius: 10,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    backgroundColor: '#1e293b', borderRadius: 10, padding: 14,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
-  listItemText: {
-    color: '#f1f5f9',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  listItemSubtext: {
-    color: '#64748b',
-    fontSize: 13,
-    marginTop: 2,
-  },
-  chevron: {
-    color: '#64748b',
-    fontSize: 22,
-    fontWeight: '300',
-  },
-  previewText: {
-    color: '#10b981',
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 10,
-  },
-  emptyText: {
-    color: '#64748b',
-    fontSize: 15,
-    textAlign: 'center',
-    marginTop: 32,
-  },
+  listItemText: { color: '#f1f5f9', fontSize: 16, fontWeight: '500' },
+  listItemSub: { color: '#64748b', fontSize: 13, marginTop: 2 },
+  actionBtn: { borderWidth: 1, borderColor: '#334155', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  actionBtnText: { fontSize: 14 },
+  emptyText: { color: '#64748b', fontSize: 15, textAlign: 'center', marginTop: 32 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 24 },
+  modalCard: { backgroundColor: '#1e293b', borderRadius: 16, padding: 24 },
+  modalTitle: { color: '#f1f5f9', fontSize: 18, fontWeight: '700', marginBottom: 16 },
 });

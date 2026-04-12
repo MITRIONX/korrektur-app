@@ -1,316 +1,391 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
-  ActivityIndicator,
   Alert,
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  PanResponder,
   Pressable,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
 import { useRouter } from 'expo-router';
-import { getKlassen, createArbeit } from '../services/api';
-import { Klasse } from '../types';
+import { getKlassen, getSchueler, createArbeit, uploadArbeitPdf, generateArbeitPdfs } from '../services/api';
+import { Klasse, Schueler } from '../types';
 
+const SCREEN_WIDTH = Dimensions.get('window').width;
 const FAECHER = ['Mathe', 'Deutsch', 'Sachkunde', 'Englisch', 'Kunst', 'Musik'];
+
+function getKlassenstufe(ej: string): string {
+  const n = parseInt(ej, 10);
+  if (isNaN(n)) return '?';
+  const now = new Date();
+  return (now.getMonth() + 1 >= 8 ? now.getFullYear() - n + 1 : now.getFullYear() - n).toString();
+}
+
+function getKlassenDisplay(k: Klasse): string {
+  const name = `Klasse ${getKlassenstufe(k.schuljahr)}${k.name}`;
+  return k.maskottchen ? `${name} (${k.maskottchen})` : name;
+}
+
+type Step = 'details' | 'pdf_position' | 'schueler';
 
 export function ArbeitErstellenScreen() {
   const router = useRouter();
+  const [step, setStep] = useState<Step>('details');
 
+  // Step 1: Details
   const [klassen, setKlassen] = useState<Klasse[]>([]);
   const [selectedKlasseId, setSelectedKlasseId] = useState<number | null>(null);
-  const [selectedFach, setSelectedFach] = useState<string>('');
+  const [fach, setFach] = useState('');
   const [titel, setTitel] = useState('');
   const [maxPunkte, setMaxPunkte] = useState('');
   const [musterloesung, setMusterloesung] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [pdfUri, setPdfUri] = useState<string | null>(null);
+  const [pdfName, setPdfName] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [arbeitId, setArbeitId] = useState<number | null>(null);
+
+  // Step 2: QR Position
+  const [qrX, setQrX] = useState(75); // percentage
+  const [qrY, setQrY] = useState(5);  // percentage
+  const previewWidth = SCREEN_WIDTH - 48;
+  const previewHeight = previewWidth * 1.414; // A4 ratio
+
+  // Step 3: Schueler selection
+  const [schueler, setSchueler] = useState<Schueler[]>([]);
+  const [selectedSchueler, setSelectedSchueler] = useState<Set<number>>(new Set());
+  const [generating, setGenerating] = useState(false);
+
+  // QR Drag
+  const panRef = useRef({ x: (75 / 100) * previewWidth, y: (5 / 100) * previewHeight });
+  const [qrPos, setQrPos] = useState({ x: panRef.current.x, y: panRef.current.y });
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {},
+      onPanResponderMove: (_, gesture) => {
+        const newX = Math.max(0, Math.min(previewWidth - 60, panRef.current.x + gesture.dx));
+        const newY = Math.max(0, Math.min(previewHeight - 70, panRef.current.y + gesture.dy));
+        setQrPos({ x: newX, y: newY });
+      },
+      onPanResponderRelease: (_, gesture) => {
+        panRef.current = {
+          x: Math.max(0, Math.min(previewWidth - 60, panRef.current.x + gesture.dx)),
+          y: Math.max(0, Math.min(previewHeight - 70, panRef.current.y + gesture.dy)),
+        };
+        setQrX(Math.round((panRef.current.x / previewWidth) * 100));
+        setQrY(Math.round((panRef.current.y / previewHeight) * 100));
+      },
+    })
+  ).current;
 
   useEffect(() => {
-    loadKlassen();
+    getKlassen()
+      .then(data => { setKlassen(data); if (data.length > 0) setSelectedKlasseId(data[0].id); })
+      .catch(e => Alert.alert('Fehler', e?.response?.data?.error || e?.message))
+      .finally(() => setLoading(false));
   }, []);
 
-  const loadKlassen = async () => {
-    setLoading(true);
+  const handlePickPdf = async () => {
     try {
-      const data = await getKlassen();
-      setKlassen(data);
-      if (data.length > 0) {
-        setSelectedKlasseId(data[0].id);
+      const result = await DocumentPicker.getDocumentAsync({ type: 'application/pdf', copyToCacheDirectory: true });
+      if (!result.canceled && result.assets?.[0]) {
+        setPdfUri(result.assets[0].uri);
+        setPdfName(result.assets[0].name);
       }
-    } catch (err: any) {
-      const message = err?.response?.data?.message || err?.message || 'Klassen konnten nicht geladen werden.';
-      Alert.alert('Fehler', message);
-    } finally {
-      setLoading(false);
-    }
+    } catch { Alert.alert('Fehler', 'PDF konnte nicht ausgewaehlt werden.'); }
   };
 
-  const isValid =
-    selectedKlasseId !== null &&
-    selectedFach !== '' &&
-    titel.trim() !== '' &&
-    maxPunkte.trim() !== '' &&
-    !isNaN(Number(maxPunkte)) &&
-    Number(maxPunkte) > 0;
-
-  const handleCreate = async () => {
-    if (!isValid || selectedKlasseId === null) return;
+  const handleStep1Next = async () => {
+    if (!selectedKlasseId || !fach || !titel || !maxPunkte) {
+      Alert.alert('Fehler', 'Bitte alle Pflichtfelder ausfuellen.');
+      return;
+    }
     setCreating(true);
     try {
-      await createArbeit({
-        klasse_id: selectedKlasseId,
-        fach: selectedFach,
-        titel: titel.trim(),
-        max_punkte: Number(maxPunkte),
-        musterloesung: musterloesung.trim() || undefined,
-        datum: new Date().toISOString().split('T')[0],
-        status: 'entwurf',
-      });
-      Alert.alert('Erfolg', 'Arbeit wurde erfolgreich erstellt.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
-    } catch (err: any) {
-      const message = err?.response?.data?.message || err?.message || 'Arbeit konnte nicht erstellt werden.';
-      Alert.alert('Fehler', message);
+      // Create arbeit
+      const arbeit = await createArbeit({
+        klasse_id: selectedKlasseId, fach, titel,
+        max_punkte: parseInt(maxPunkte, 10),
+        musterloesung: musterloesung.trim() || null,
+        status: 'entwurf', datum: new Date().toISOString().split('T')[0],
+      } as any);
+      setArbeitId(arbeit.id);
+
+      // Upload PDF if selected
+      if (pdfUri && pdfName) {
+        await uploadArbeitPdf(arbeit.id, pdfUri, pdfName);
+        setStep('pdf_position');
+      } else {
+        // No PDF - skip to done
+        Alert.alert('Erstellt', 'Arbeit ohne PDF angelegt.', [{ text: 'OK', onPress: () => router.back() }]);
+      }
+    } catch (e: any) {
+      Alert.alert('Fehler', e?.response?.data?.error || e?.message);
     } finally {
       setCreating(false);
     }
   };
 
+  const handleStep2Next = async () => {
+    if (!selectedKlasseId) return;
+    // Load students
+    try {
+      const data = await getSchueler(selectedKlasseId);
+      setSchueler(data);
+      setSelectedSchueler(new Set(data.map(s => s.id))); // all selected by default
+      setStep('schueler');
+    } catch (e: any) {
+      Alert.alert('Fehler', e?.response?.data?.error || e?.message);
+    }
+  };
+
+  const toggleSchueler = (id: number) => {
+    setSelectedSchueler(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleGenerate = async () => {
+    if (!arbeitId || selectedSchueler.size === 0) return;
+    setGenerating(true);
+    try {
+      const result = await generateArbeitPdfs(arbeitId, Array.from(selectedSchueler), qrX, qrY);
+      Alert.alert(
+        'PDFs generiert!',
+        `${result.schueler_count} personalisierte Kopien erstellt. Du kannst sie jetzt in der Arbeit herunterladen und drucken.`,
+        [{ text: 'OK', onPress: () => router.back() }]
+      );
+    } catch (e: any) {
+      Alert.alert('Fehler', e?.response?.data?.error || e?.message);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  if (loading) {
+    return <SafeAreaView style={styles.container}><ActivityIndicator color="#3b82f6" size="large" style={{ marginTop: 100 }} /></SafeAreaView>;
+  }
+
+  // ===== STEP 3: Schueler auswaehlen =====
+  if (step === 'schueler') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Pressable onPress={() => setStep('pdf_position')}><Text style={styles.backText}>← Zurueck</Text></Pressable>
+          <Text style={styles.headerTitle}>Schueler auswaehlen</Text>
+          <Text style={styles.stepText}>3/3</Text>
+        </View>
+        <ScrollView style={styles.scroll} contentContainerStyle={{ paddingBottom: 40 }}>
+          <Text style={styles.hint}>{selectedSchueler.size} von {schueler.length} ausgewaehlt</Text>
+          <Pressable style={styles.selectAllBtn} onPress={() => {
+            if (selectedSchueler.size === schueler.length) setSelectedSchueler(new Set());
+            else setSelectedSchueler(new Set(schueler.map(s => s.id)));
+          }}>
+            <Text style={styles.selectAllText}>
+              {selectedSchueler.size === schueler.length ? 'Keine auswaehlen' : 'Alle auswaehlen'}
+            </Text>
+          </Pressable>
+          {schueler.map(s => (
+            <Pressable key={s.id} style={styles.schuelerItem} onPress={() => toggleSchueler(s.id)}>
+              <View style={[styles.checkbox, selectedSchueler.has(s.id) && styles.checkboxChecked]}>
+                {selectedSchueler.has(s.id) && <Text style={styles.checkmark}>✓</Text>}
+              </View>
+              <Text style={styles.schuelerName}>{s.vorname} {s.nachname}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+        <View style={styles.footer}>
+          <Pressable
+            style={[styles.submitBtn, (generating || selectedSchueler.size === 0) && styles.btnDisabled]}
+            onPress={handleGenerate}
+            disabled={generating || selectedSchueler.size === 0}>
+            {generating ? <ActivityIndicator color="#fff" /> : (
+              <Text style={styles.submitText}>
+                {selectedSchueler.size} PDFs generieren & drucken
+              </Text>
+            )}
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // ===== STEP 2: QR-Code positionieren =====
+  if (step === 'pdf_position') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Pressable onPress={() => setStep('details')}><Text style={styles.backText}>← Zurueck</Text></Pressable>
+          <Text style={styles.headerTitle}>QR-Code platzieren</Text>
+          <Text style={styles.stepText}>2/3</Text>
+        </View>
+        <ScrollView style={styles.scroll} contentContainerStyle={{ alignItems: 'center', paddingBottom: 40 }}>
+          <Text style={styles.hint}>Ziehe den QR-Code an die gewuenschte Position auf dem Arbeitsblatt</Text>
+
+          {/* PDF Preview with draggable QR */}
+          <View style={[styles.pdfPreview, { width: previewWidth, height: previewHeight }]}>
+            {/* Simulated PDF background */}
+            <View style={styles.pdfContent}>
+              <Text style={styles.pdfTitle}>{titel || 'Arbeitsblatt'}</Text>
+              <Text style={styles.pdfSubtitle}>{fach} · {maxPunkte} Punkte</Text>
+              <View style={styles.pdfLine} />
+              <View style={styles.pdfLine} />
+              <View style={[styles.pdfLine, { width: '60%' }]} />
+              <View style={{ height: 20 }} />
+              <View style={styles.pdfLine} />
+              <View style={styles.pdfLine} />
+              <View style={[styles.pdfLine, { width: '80%' }]} />
+            </View>
+
+            {/* Draggable QR Code */}
+            <View
+              {...panResponder.panHandlers}
+              style={[styles.qrDraggable, { left: qrPos.x, top: qrPos.y }]}
+            >
+              <View style={styles.qrBox}>
+                <Text style={styles.qrIcon}>◻◻◻{'\n'}◻◻◻{'\n'}◻◻◻</Text>
+              </View>
+              <Text style={styles.qrName}>Max Mustermann</Text>
+            </View>
+          </View>
+
+          <Text style={styles.positionInfo}>Position: {qrX}% / {qrY}%</Text>
+        </ScrollView>
+        <View style={styles.footer}>
+          <Pressable style={styles.submitBtn} onPress={handleStep2Next}>
+            <Text style={styles.submitText}>Weiter → Schueler auswaehlen</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // ===== STEP 1: Details =====
   return (
-    <View style={styles.container}>
-      {/* Header */}
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>← Zurück</Text>
-        </Pressable>
+        <Pressable onPress={() => router.back()}><Text style={styles.backText}>← Zurueck</Text></Pressable>
         <Text style={styles.headerTitle}>Arbeit erstellen</Text>
-        <View style={{ width: 60 }} />
+        <Text style={styles.stepText}>1/3</Text>
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-
-        {/* Klasse */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Klasse</Text>
-          {loading ? (
-            <ActivityIndicator color="#3b82f6" />
-          ) : klassen.length === 0 ? (
-            <Text style={styles.emptyText}>Keine Klassen vorhanden. Bitte zuerst eine Klasse anlegen.</Text>
-          ) : (
-            <View style={styles.chipRow}>
-              {klassen.map((klasse) => {
-                const selected = selectedKlasseId === klasse.id;
-                return (
-                  <Pressable
-                    key={klasse.id}
-                    style={[styles.chip, selected && styles.chipSelected]}
-                    onPress={() => setSelectedKlasseId(klasse.id)}
-                  >
-                    <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-                      {klasse.name}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          )}
-        </View>
-
-        {/* Fach */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Fach</Text>
+      <ScrollView style={styles.scroll} contentContainerStyle={{ paddingBottom: 40 }}>
+        <Text style={styles.label}>Klasse</Text>
+        {klassen.length === 0 ? (
+          <Text style={styles.hint}>Keine Klassen. Bitte zuerst eine anlegen.</Text>
+        ) : (
           <View style={styles.chipRow}>
-            {FAECHER.map((fach) => {
-              const selected = selectedFach === fach;
-              return (
-                <Pressable
-                  key={fach}
-                  style={[styles.chip, selected && styles.chipSelected]}
-                  onPress={() => setSelectedFach(fach)}
-                >
-                  <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-                    {fach}
-                  </Text>
-                </Pressable>
-              );
-            })}
+            {klassen.map(k => (
+              <Pressable key={k.id} style={[styles.chip, selectedKlasseId === k.id && styles.chipActive]}
+                onPress={() => setSelectedKlasseId(k.id)}>
+                <Text style={[styles.chipText, selectedKlasseId === k.id && styles.chipTextActive]}>
+                  {getKlassenDisplay(k)}
+                </Text>
+              </Pressable>
+            ))}
           </View>
+        )}
+
+        <Text style={styles.label}>Fach</Text>
+        <View style={styles.chipRow}>
+          {FAECHER.map(f => (
+            <Pressable key={f} style={[styles.chip, fach === f && styles.chipActive]} onPress={() => setFach(f)}>
+              <Text style={[styles.chipText, fach === f && styles.chipTextActive]}>{f}</Text>
+            </Pressable>
+          ))}
         </View>
 
-        {/* Titel */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Titel</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="z.B. Mathe-Test Kapitel 3"
-            placeholderTextColor="#64748b"
-            value={titel}
-            onChangeText={setTitel}
-          />
-        </View>
+        <Text style={styles.label}>Titel</Text>
+        <TextInput style={styles.input} placeholder="z.B. Mathe-Test Kapitel 3"
+          placeholderTextColor="#64748b" value={titel} onChangeText={setTitel} />
 
-        {/* Max Punkte */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Maximale Punkte</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="z.B. 100"
-            placeholderTextColor="#64748b"
-            value={maxPunkte}
-            onChangeText={setMaxPunkte}
-            keyboardType="numeric"
-          />
-        </View>
+        <Text style={styles.label}>Max. Punkte</Text>
+        <TextInput style={styles.input} placeholder="z.B. 20"
+          placeholderTextColor="#64748b" value={maxPunkte} onChangeText={setMaxPunkte} keyboardType="numeric" />
 
-        {/* Musterlösung */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Musterlösung <Text style={styles.optional}>(optional)</Text></Text>
-          <TextInput
-            style={[styles.input, styles.inputMultiline]}
-            placeholder="Musterlösung eingeben..."
-            placeholderTextColor="#64748b"
-            value={musterloesung}
-            onChangeText={setMusterloesung}
-            multiline
-            numberOfLines={5}
-            textAlignVertical="top"
-          />
-        </View>
+        <Text style={styles.label}>Arbeitsblatt (PDF)</Text>
+        <Pressable style={styles.pdfButton} onPress={handlePickPdf}>
+          <Text style={styles.pdfButtonIcon}>📄</Text>
+          <Text style={styles.pdfButtonText}>{pdfName || 'PDF auswaehlen...'}</Text>
+        </Pressable>
+        {pdfUri && <Pressable onPress={() => { setPdfUri(null); setPdfName(null); }}><Text style={styles.pdfRemove}>✕ entfernen</Text></Pressable>}
 
-        {/* Create Button */}
+        <Text style={styles.label}>Musterloesung (optional)</Text>
+        <TextInput style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+          placeholder="Aufgabe 1: 42 ..."
+          placeholderTextColor="#64748b" value={musterloesung} onChangeText={setMusterloesung} multiline />
+      </ScrollView>
+
+      <View style={styles.footer}>
         <Pressable
-          style={[styles.createButton, (!isValid || creating) && styles.createButtonDisabled]}
-          onPress={handleCreate}
-          disabled={!isValid || creating}
-        >
-          {creating ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.createButtonText}>Arbeit erstellen</Text>
+          style={[styles.submitBtn, (creating || !selectedKlasseId || !fach || !titel || !maxPunkte) && styles.btnDisabled]}
+          onPress={handleStep1Next}
+          disabled={creating || !selectedKlasseId || !fach || !titel || !maxPunkte}>
+          {creating ? <ActivityIndicator color="#fff" /> : (
+            <Text style={styles.submitText}>{pdfUri ? 'Weiter → QR platzieren' : 'Arbeit erstellen'}</Text>
           )}
         </Pressable>
-
-      </ScrollView>
-    </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f172a',
-  },
+  container: { flex: 1, backgroundColor: '#0f172a' },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 56,
-    paddingBottom: 16,
-    backgroundColor: '#1e293b',
-    borderBottomWidth: 1,
-    borderBottomColor: '#334155',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#1e293b',
+    borderBottomWidth: 1, borderBottomColor: '#334155',
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#f1f5f9',
-  },
-  backButton: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    minWidth: 60,
-  },
-  backButtonText: {
-    color: '#3b82f6',
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#94a3b8',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 10,
-  },
-  optional: {
-    fontWeight: '400',
-    textTransform: 'none',
-    color: '#64748b',
-    fontSize: 12,
-    letterSpacing: 0,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
-    backgroundColor: '#1e293b',
-    borderWidth: 1,
-    borderColor: '#334155',
-    borderRadius: 20,
-    paddingVertical: 7,
-    paddingHorizontal: 16,
-  },
-  chipSelected: {
-    backgroundColor: '#3b82f6',
-    borderColor: '#3b82f6',
-  },
-  chipText: {
-    color: '#94a3b8',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  chipTextSelected: {
-    color: '#fff',
-  },
-  input: {
-    backgroundColor: '#1e293b',
-    borderWidth: 1,
-    borderColor: '#334155',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: '#f1f5f9',
-    fontSize: 15,
-  },
-  inputMultiline: {
-    minHeight: 120,
-    paddingTop: 12,
-  },
-  emptyText: {
-    color: '#64748b',
-    fontSize: 14,
-  },
-  createButton: {
-    backgroundColor: '#3b82f6',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-  createButtonDisabled: {
-    opacity: 0.4,
-  },
-  createButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  headerTitle: { fontSize: 16, fontWeight: '700', color: '#f1f5f9' },
+  backText: { color: '#3b82f6', fontSize: 15 },
+  stepText: { color: '#64748b', fontSize: 13 },
+  scroll: { flex: 1, padding: 20 },
+  footer: { padding: 16, backgroundColor: '#1e293b', borderTopWidth: 1, borderTopColor: '#334155' },
+  label: { color: '#94a3b8', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 20, marginBottom: 8 },
+  hint: { color: '#64748b', fontSize: 14, textAlign: 'center', marginBottom: 16 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { backgroundColor: '#1e293b', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: '#334155' },
+  chipActive: { backgroundColor: '#3b82f6', borderColor: '#3b82f6' },
+  chipText: { color: '#94a3b8', fontSize: 13 },
+  chipTextActive: { color: '#fff' },
+  input: { backgroundColor: '#1e293b', borderWidth: 1, borderColor: '#334155', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, color: '#f1f5f9', fontSize: 16 },
+  pdfButton: { backgroundColor: '#1e293b', borderWidth: 1, borderColor: '#334155', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 10, borderStyle: 'dashed' },
+  pdfButtonIcon: { fontSize: 22 },
+  pdfButtonText: { color: '#94a3b8', fontSize: 15, flex: 1 },
+  pdfRemove: { color: '#ef4444', fontSize: 13, marginTop: 6 },
+  submitBtn: { backgroundColor: '#3b82f6', borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
+  btnDisabled: { opacity: 0.5 },
+  submitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  // Step 2: PDF Preview
+  pdfPreview: { backgroundColor: '#fff', borderRadius: 8, overflow: 'hidden', position: 'relative', marginTop: 8 },
+  pdfContent: { padding: 20 },
+  pdfTitle: { fontSize: 16, fontWeight: '700', color: '#1e293b', marginBottom: 4 },
+  pdfSubtitle: { fontSize: 12, color: '#64748b', marginBottom: 16 },
+  pdfLine: { height: 10, backgroundColor: '#e2e8f0', borderRadius: 4, marginBottom: 8, width: '100%' },
+  qrDraggable: { position: 'absolute', alignItems: 'center', width: 70 },
+  qrBox: { width: 56, height: 56, backgroundColor: '#1e293b', borderRadius: 4, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#3b82f6' },
+  qrIcon: { color: '#3b82f6', fontSize: 12, lineHeight: 14, textAlign: 'center' },
+  qrName: { fontSize: 7, color: '#1e293b', marginTop: 2, textAlign: 'center' },
+  positionInfo: { color: '#64748b', fontSize: 12, marginTop: 8 },
+  // Step 3: Schueler
+  selectAllBtn: { backgroundColor: '#1e293b', borderRadius: 8, padding: 10, alignItems: 'center', marginBottom: 12 },
+  selectAllText: { color: '#3b82f6', fontSize: 14, fontWeight: '600' },
+  schuelerItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#1e293b' },
+  checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: '#334155', justifyContent: 'center', alignItems: 'center' },
+  checkboxChecked: { backgroundColor: '#3b82f6', borderColor: '#3b82f6' },
+  checkmark: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  schuelerName: { color: '#f1f5f9', fontSize: 16 },
 });

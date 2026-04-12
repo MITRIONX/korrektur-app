@@ -14,6 +14,7 @@ export interface Klasse {
 export interface Schueler {
   id: number;
   klasse_id: number;
+  aktiv?: boolean;
   vorname: string;
   nachname: string;
 }

@@ -1,7 +1,30 @@
 import { Router, Response } from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 import { query } from '../db';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { generateQrSheet } from '../services/qr';
+import { generateStudentPdfs } from '../services/pdf';
+import { config } from '../config';
+
+const pdfUpload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => {
+      const dir = path.join(config.uploadDir, 'templates');
+      fs.mkdirSync(dir, { recursive: true });
+      cb(null, dir);
+    },
+    filename: (_req, _file, cb) => {
+      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}.pdf`);
+    },
+  }),
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype === 'application/pdf') cb(null, true);
+    else cb(new Error('Nur PDF-Dateien erlaubt'));
+  },
+});
 
 const router = Router();
 
@@ -192,6 +215,113 @@ router.get('/:id/qr-codes', async (req: AuthRequest, res: Response) => {
     return res.type('html').send(html);
   } catch (err) {
     console.error('GET /arbeiten/:id/qr-codes error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /:id/upload-pdf - upload template PDF for an arbeit
+router.post('/:id/upload-pdf', pdfUpload.single('pdf'), async (req: AuthRequest, res: Response) => {
+  try {
+    const ownerCheck = await query(
+      `SELECT a.id FROM arbeiten a JOIN klassen k ON a.klasse_id = k.id WHERE a.id = $1 AND k.user_id = $2`,
+      [req.params.id, req.userId]
+    );
+    if (ownerCheck.rows.length === 0) return res.status(404).json({ error: 'Arbeit not found' });
+    if (!req.file) return res.status(400).json({ error: 'PDF file required' });
+
+    const result = await query(
+      'UPDATE arbeiten SET pdf_pfad = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+      [req.file.path, req.params.id]
+    );
+    return res.json(result.rows[0]);
+  } catch (err) {
+    console.error('POST /arbeiten/:id/upload-pdf error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /:id/generate-pdfs - generate personalized PDFs with QR codes
+router.post('/:id/generate-pdfs', async (req: AuthRequest, res: Response) => {
+  const { schueler_ids, qr_x, qr_y } = req.body as {
+    schueler_ids?: number[];
+    qr_x?: number;
+    qr_y?: number;
+  };
+
+  try {
+    const arbeitResult = await query(
+      `SELECT a.* FROM arbeiten a JOIN klassen k ON a.klasse_id = k.id WHERE a.id = $1 AND k.user_id = $2`,
+      [req.params.id, req.userId]
+    );
+    if (arbeitResult.rows.length === 0) return res.status(404).json({ error: 'Arbeit not found' });
+
+    const arbeit = arbeitResult.rows[0];
+    if (!arbeit.pdf_pfad) return res.status(400).json({ error: 'Kein PDF hochgeladen' });
+
+    // Save QR position
+    if (qr_x !== undefined && qr_y !== undefined) {
+      await query(
+        'UPDATE arbeiten SET qr_position_x = $1, qr_position_y = $2 WHERE id = $3',
+        [qr_x, qr_y, req.params.id]
+      );
+    }
+
+    // Get students
+    let studentRows;
+    if (schueler_ids && schueler_ids.length > 0) {
+      const placeholders = schueler_ids.map((_, i) => `$${i + 2}`).join(',');
+      studentRows = await query(
+        `SELECT id, vorname, nachname FROM schueler WHERE klasse_id = $1 AND id IN (${placeholders}) AND aktiv = true ORDER BY nachname, vorname`,
+        [arbeit.klasse_id, ...schueler_ids]
+      );
+    } else {
+      studentRows = await query(
+        'SELECT id, vorname, nachname FROM schueler WHERE klasse_id = $1 AND aktiv = true ORDER BY nachname, vorname',
+        [arbeit.klasse_id]
+      );
+    }
+
+    if (studentRows.rows.length === 0) {
+      return res.status(400).json({ error: 'Keine Schueler ausgewaehlt' });
+    }
+
+    const x = qr_x ?? arbeit.qr_position_x ?? 80;
+    const y = qr_y ?? arbeit.qr_position_y ?? 5;
+
+    const outputPath = await generateStudentPdfs(
+      arbeit.id,
+      arbeit.pdf_pfad,
+      studentRows.rows,
+      x,
+      y
+    );
+
+    // Update arbeit status
+    await query("UPDATE arbeiten SET status = 'scannen' WHERE id = $1", [req.params.id]);
+
+    return res.json({ pdf_path: outputPath, schueler_count: studentRows.rows.length });
+  } catch (err) {
+    console.error('POST /arbeiten/:id/generate-pdfs error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /:id/download-pdf - download the generated combined PDF
+router.get('/:id/download-pdf', async (req: AuthRequest, res: Response) => {
+  try {
+    const arbeitResult = await query(
+      `SELECT a.id FROM arbeiten a JOIN klassen k ON a.klasse_id = k.id WHERE a.id = $1 AND k.user_id = $2`,
+      [req.params.id, req.userId]
+    );
+    if (arbeitResult.rows.length === 0) return res.status(404).json({ error: 'Arbeit not found' });
+
+    const id = String(req.params.id);
+    const pdfPath = path.join(config.uploadDir, 'pdfs', id, `arbeit-${id}-alle.pdf`);
+    if (!fs.existsSync(pdfPath)) return res.status(404).json({ error: 'PDF noch nicht generiert' });
+
+    return res.download(pdfPath, `arbeit-${id}.pdf`);
+  } catch (err) {
+    console.error('GET /arbeiten/:id/download-pdf error:', err);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
