@@ -77,9 +77,17 @@ export async function analysiereArbeitsblatt(pdfPath: string, fach: string): Pro
 Analysiere dieses Arbeitsblatt. Liste JEDE Aufgabe auf:
 - nummer: Aufgabennummer
 - beschreibung: Was muss der Schueler tun? (kurz und klar)
-- typ: Art der Aufgabe (z.B. "zuordnung", "lueckentext", "konjugation", "definition", "rechnung", "ankreuzen", "schreiben", "zeichnen")
-- loesungen: Die korrekten Loesungen (als Array von Strings, oder als Objekt bei komplexen Aufgaben)
-- max_punkte: Empfohlene Punkte fuer diese Aufgabe
+- typ: Art der Aufgabe (einkreisen, unterstreichen, zuordnung, lueckentext, konjugation, definition, rechnung, ankreuzen, schreiben, zeichnen, frei)
+- loesungen: Die korrekten Loesungen
+- max_punkte: Empfohlene Punkte fuer diese Aufgabe (1 Punkt pro richtige Antwort)
+
+WICHTIG fuer das Format der Loesungen:
+- Bei EINFACHEN Aufgaben (einkreisen, unterstreichen, ankreuzen): Array von Strings ["LAUFEN", "TRINKEN", ...]
+- Bei TABELLEN/ZUORDNUNG mit 2 Spalten: Objekt mit den EXAKTEN Spalten-Ueberschriften als Keys!
+  Beispiel Einzahl/Mehrzahl: {"Einzahl": ["ein Pferd", "eine Tulpe"], "Mehrzahl": ["viele Pferde", "viele Tulpen"]}
+  Beispiel Verben/Nomen: {"Verben": ["trinken", "essen", "lachen"], "Nomen": ["Blume", "Regen", "Eis"]}
+  BENUTZE DIE EXAKTEN SPALTEN-NAMEN AUS DEM ARBEITSBLATT!
+- Bei FREIEN Aufgaben (Erklaerungen schreiben): String mit Bewertungskriterien
 
 Antworte als JSON:
 {

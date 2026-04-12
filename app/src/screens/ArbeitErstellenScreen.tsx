@@ -198,6 +198,8 @@ export function ArbeitErstellenScreen() {
   const [editPairs, setEditPairs] = useState<{ left: string; right: string }[]>([]);
   const [editIsFrei, setEditIsFrei] = useState(false);
   const [editFreiKriterien, setEditFreiKriterien] = useState('');
+  const [editLeftHeader, setEditLeftHeader] = useState('');
+  const [editRightHeader, setEditRightHeader] = useState('');
 
   const AUFGABEN_TYPEN = ['einkreisen', 'unterstreichen', 'zuordnung', 'lueckentext', 'konjugation', 'definition', 'rechnung', 'ankreuzen', 'schreiben', 'zeichnen', 'frei'];
 
@@ -220,15 +222,31 @@ export function ArbeitErstellenScreen() {
       setEditAnswers([]);
       setEditPairs([]);
     } else if (typeof a.loesungen === 'object' && !Array.isArray(a.loesungen) && a.loesungen !== null) {
-      // Object with keys = pairs/zuordnung
+      // Object with keys = zuordnung (e.g. {Verben: [...], Nomen: [...]})
       setEditIsFrei(false);
       const keys = Object.keys(a.loesungen);
-      const pairs: { left: string; right: string }[] = [];
-      keys.forEach(k => {
-        const vals = Array.isArray(a.loesungen[k]) ? a.loesungen[k] : [a.loesungen[k]];
-        vals.forEach((v: string) => pairs.push({ left: k, right: String(v) }));
-      });
-      setEditPairs(pairs.length > 0 ? pairs : [{ left: '', right: '' }]);
+      // Use keys as column headers
+      if (keys.length === 2) {
+        setEditLeftHeader(keys[0]);
+        setEditRightHeader(keys[1]);
+        const leftVals = Array.isArray(a.loesungen[keys[0]]) ? a.loesungen[keys[0]] : [a.loesungen[keys[0]]];
+        const rightVals = Array.isArray(a.loesungen[keys[1]]) ? a.loesungen[keys[1]] : [a.loesungen[keys[1]]];
+        const maxLen = Math.max(leftVals.length, rightVals.length);
+        const pairs: { left: string; right: string }[] = [];
+        for (let i = 0; i < maxLen; i++) {
+          pairs.push({ left: String(leftVals[i] || ''), right: String(rightVals[i] || '') });
+        }
+        setEditPairs(pairs.length > 0 ? pairs : [{ left: '', right: '' }]);
+      } else {
+        setEditLeftHeader('Kategorie');
+        setEditRightHeader('Wort');
+        const pairs: { left: string; right: string }[] = [];
+        keys.forEach(k => {
+          const vals = Array.isArray(a.loesungen[k]) ? a.loesungen[k] : [a.loesungen[k]];
+          vals.forEach((v: string) => pairs.push({ left: k, right: String(v) }));
+        });
+        setEditPairs(pairs.length > 0 ? pairs : [{ left: '', right: '' }]);
+      }
       setEditAnswers([]);
     } else {
       setEditIsFrei(false);
@@ -246,13 +264,14 @@ export function ArbeitErstellenScreen() {
     let loesungen: any;
     if (editIsFrei) {
       loesungen = editFreiKriterien;
-    } else if (editPairs.length > 0 && editPairs[0].left) {
-      // Build object from pairs
-      const obj: Record<string, string[]> = {};
+    } else if (editPairs.length > 0 && (editLeftHeader || editPairs[0].left)) {
+      // Build object with column headers as keys
+      const lKey = editLeftHeader.trim() || 'Links';
+      const rKey = editRightHeader.trim() || 'Rechts';
+      const obj: Record<string, string[]> = { [lKey]: [], [rKey]: [] };
       editPairs.forEach(p => {
-        if (!p.left.trim()) return;
-        if (!obj[p.left.trim()]) obj[p.left.trim()] = [];
-        if (p.right.trim()) obj[p.left.trim()].push(p.right.trim());
+        if (p.left.trim()) obj[lKey].push(p.left.trim());
+        if (p.right.trim()) obj[rKey].push(p.right.trim());
       });
       loesungen = obj;
     } else {
@@ -369,9 +388,15 @@ export function ArbeitErstellenScreen() {
 
                 {editPairs.length > 0 ? (
                   <>
-                    <View style={{ flexDirection: 'row', marginBottom: 6 }}>
-                      <Text style={{ color: '#94a3b8', fontSize: 11, flex: 1 }}>LINKS</Text>
-                      <Text style={{ color: '#94a3b8', fontSize: 11, flex: 1, marginLeft: 8 }}>RECHTS</Text>
+                    <View style={{ flexDirection: 'row', marginBottom: 6, gap: 8 }}>
+                      <TextInput style={[styles.input, { flex: 1, marginBottom: 0, backgroundColor: '#334155', fontWeight: '700', fontSize: 13 }]}
+                        value={editLeftHeader} onChangeText={setEditLeftHeader}
+                        placeholder="Spalte 1 (z.B. Einzahl)" placeholderTextColor="#64748b" />
+                      <View style={{ width: 20 }} />
+                      <TextInput style={[styles.input, { flex: 1, marginBottom: 0, backgroundColor: '#334155', fontWeight: '700', fontSize: 13 }]}
+                        value={editRightHeader} onChangeText={setEditRightHeader}
+                        placeholder="Spalte 2 (z.B. Mehrzahl)" placeholderTextColor="#64748b" />
+                      <View style={{ width: 24 }} />
                     </View>
                     {editPairs.map((p, i) => (
                       <View key={i} style={{ flexDirection: 'row', gap: 8, marginBottom: 6, alignItems: 'center' }}>
