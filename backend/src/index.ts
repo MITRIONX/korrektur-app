@@ -6,6 +6,7 @@ import { config } from './config';
 import authRoutes from './routes/auth';
 import klassenRoutes from './routes/klassen';
 import schuelerRoutes from './routes/schueler';
+import arbeitenRoutes from './routes/arbeiten';
 
 const app = express();
 
@@ -34,6 +35,9 @@ app.use('/api/klassen', klassenRoutes);
 
 // Schueler routes (nested under klassen)
 app.use('/api/klassen/:klasseId/schueler', schuelerRoutes);
+
+// Arbeiten routes
+app.use('/api/arbeiten', arbeitenRoutes);
 
 // Start server only when run directly
 if (require.main === module) {
