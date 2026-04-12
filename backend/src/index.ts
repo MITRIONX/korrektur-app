@@ -9,6 +9,7 @@ import schuelerRoutes from './routes/schueler';
 import arbeitenRoutes from './routes/arbeiten';
 import scansRoutes from './routes/scans';
 import korrekturenRoutes from './routes/korrekturen';
+import ergebnisseRoutes from './routes/ergebnisse';
 
 const app = express();
 
@@ -46,6 +47,9 @@ app.use('/api/arbeiten', scansRoutes);
 
 // Korrekturen routes (handles /scans/:id/* and /korrekturen/:id/*)
 app.use('/api', korrekturenRoutes);
+
+// Ergebnisse routes (handles /arbeiten/:id/ergebnisse/* and /ergebnis/:shareToken/*)
+app.use('/api', ergebnisseRoutes);
 
 // Start server only when run directly
 if (require.main === module) {
