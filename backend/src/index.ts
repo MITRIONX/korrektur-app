@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import path from 'path';
 import { config } from './config';
+import authRoutes from './routes/auth';
 
 const app = express();
 
@@ -22,6 +23,9 @@ app.set('views', path.join(__dirname, 'views'));
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
+
+// Auth routes
+app.use('/api/auth', authRoutes);
 
 // Start server only when run directly
 if (require.main === module) {
