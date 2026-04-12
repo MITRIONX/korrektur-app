@@ -14,7 +14,6 @@ import {
   View,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import { WebView } from 'react-native-webview';
 import { useRouter } from 'expo-router';
 import { getKlassen, getSchueler, createArbeit, uploadArbeitPdf, generateArbeitPdfs } from '../services/api';
 import { useAuthStore } from '../store/auth';
@@ -226,6 +225,9 @@ export function ArbeitErstellenScreen() {
 
   // ===== STEP 2: QR-Code positionieren =====
   if (step === 'pdf_position') {
+    const token = useAuthStore.getState().token;
+    const previewUrl = `http://46.225.218.211:3100/api/arbeiten/${arbeitId}/pdf-preview`;
+
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
@@ -236,14 +238,12 @@ export function ArbeitErstellenScreen() {
         <View style={{ flex: 1, padding: 12 }}>
           <Text style={styles.hint}>Ziehe den QR-Code an die gewuenschte Position</Text>
 
-          {/* PDF with draggable QR overlay */}
+          {/* PDF preview as image with draggable QR overlay */}
           <View style={[styles.pdfPreview, { width: previewWidth, height: previewHeight }]}>
-            {/* PDF via WebView using local file URI */}
-            <WebView
-              source={{ uri: pdfUri || '' }}
-              style={{ flex: 1, backgroundColor: '#fff' }}
-              startInLoadingState={true}
-              renderLoading={() => <ActivityIndicator color="#3b82f6" size="large" style={{ position: 'absolute', top: '45%', left: '45%' }} />}
+            <Image
+              source={{ uri: previewUrl, headers: { Authorization: `Bearer ${token}` } }}
+              style={{ width: '100%', height: '100%' }}
+              resizeMode="contain"
             />
 
             {/* Draggable QR Code overlay */}

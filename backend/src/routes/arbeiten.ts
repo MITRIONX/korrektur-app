@@ -236,6 +236,39 @@ router.get('/:id/pdf', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// GET /:id/pdf-preview - convert first page to PNG (no auth for WebView)
+router.get('/:id/pdf-preview', async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await query(
+      `SELECT a.pdf_pfad FROM arbeiten a JOIN klassen k ON a.klasse_id = k.id WHERE a.id = $1 AND k.user_id = $2`,
+      [req.params.id, req.userId]
+    );
+    if (result.rows.length === 0 || !result.rows[0].pdf_pfad) {
+      return res.status(404).json({ error: 'PDF not found' });
+    }
+
+    const pdfPath = path.resolve(result.rows[0].pdf_pfad);
+    const previewDir = path.join(config.uploadDir, 'previews');
+    fs.mkdirSync(previewDir, { recursive: true });
+    const previewBase = path.join(previewDir, `arbeit-${req.params.id}`);
+    const previewPath = `${previewBase}-1.png`;
+
+    // Generate preview if not cached
+    if (!fs.existsSync(previewPath)) {
+      const { execSync } = require('child_process');
+      execSync(`pdftoppm -png -f 1 -l 1 -r 200 "${pdfPath}" "${previewBase}"`, { timeout: 10000 });
+    }
+
+    if (fs.existsSync(previewPath)) {
+      return res.sendFile(previewPath);
+    }
+    return res.status(500).json({ error: 'Preview generation failed' });
+  } catch (err) {
+    console.error('GET /arbeiten/:id/pdf-preview error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // DELETE /:id - delete arbeit
 router.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {
