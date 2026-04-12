@@ -114,6 +114,11 @@ export const deleteArbeit = async (arbeitId: number): Promise<void> => {
   await apiClient.delete(`/arbeiten/${arbeitId}`);
 };
 
+export const analysiereArbeit = async (arbeitId: number): Promise<any> => {
+  const res = await apiClient.post(`/arbeiten/${arbeitId}/analysieren`);
+  return res.data;
+};
+
 export const getArbeit = async (arbeitId: number): Promise<Arbeit> => {
   const res = await apiClient.get(`/arbeiten/${arbeitId}`);
   return res.data;
@@ -167,8 +172,8 @@ export const getScans = async (arbeitId: number): Promise<ScanSeite[]> => {
 };
 
 // Korrekturen
-export const triggerKorrektur = async (scanSeiteId: number): Promise<{ message: string }> => {
-  const res = await apiClient.post(`/scans/${scanSeiteId}/korrektur`);
+export const triggerKorrektur = async (scanSeiteId: number): Promise<any> => {
+  const res = await apiClient.post(`/scans/${scanSeiteId}/korrigieren`);
   return res.data;
 };
 

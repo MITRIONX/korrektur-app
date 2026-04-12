@@ -6,6 +6,7 @@ import { query } from '../db';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { generateQrSheet } from '../services/qr';
 import { generateStudentPdfs } from '../services/pdf';
+import { analysiereArbeitsblatt } from '../services/aufgaben-analyse';
 import { config } from '../config';
 
 const pdfUpload = multer({
@@ -294,14 +295,58 @@ router.post('/:id/upload-pdf', pdfUpload.single('pdf'), async (req: AuthRequest,
     if (ownerCheck.rows.length === 0) return res.status(404).json({ error: 'Arbeit not found' });
     if (!req.file) return res.status(400).json({ error: 'PDF file required' });
 
-    const result = await query(
-      'UPDATE arbeiten SET pdf_pfad = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+    await query(
+      'UPDATE arbeiten SET pdf_pfad = $1, updated_at = NOW() WHERE id = $2',
       [req.file.path, req.params.id]
     );
-    return res.json(result.rows[0]);
+
+    // Get fach for analysis
+    const arbeit = await query('SELECT fach FROM arbeiten WHERE id = $1', [req.params.id]);
+    const fach = arbeit.rows[0]?.fach || 'Deutsch';
+
+    // Analyze PDF with GPT-4o in background - don't block the response
+    const pdfPath = req.file.path;
+    analysiereArbeitsblatt(pdfPath, fach)
+      .then(async (analyse) => {
+        await query(
+          'UPDATE arbeiten SET musterloesung = $1, max_punkte = COALESCE($2, max_punkte), updated_at = NOW() WHERE id = $3',
+          [JSON.stringify(analyse), analyse.empfohlene_max_punkte, req.params.id]
+        );
+        console.log(`Analyse fertig fuer Arbeit ${req.params.id}: ${analyse.aufgaben.length} Aufgaben erkannt`);
+      })
+      .catch((err) => {
+        console.error(`Analyse fehlgeschlagen fuer Arbeit ${req.params.id}:`, err.message);
+      });
+
+    const result = await query('SELECT * FROM arbeiten WHERE id = $1', [req.params.id]);
+    return res.json({ ...result.rows[0], analyse_status: 'laeuft' });
   } catch (err) {
     console.error('POST /arbeiten/:id/upload-pdf error:', err);
     return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /:id/analysieren - manually trigger PDF analysis
+router.post('/:id/analysieren', async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await query(
+      `SELECT a.* FROM arbeiten a JOIN klassen k ON a.klasse_id = k.id WHERE a.id = $1 AND k.user_id = $2`,
+      [req.params.id, req.userId]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Arbeit not found' });
+    if (!result.rows[0].pdf_pfad) return res.status(400).json({ error: 'Kein PDF hochgeladen' });
+
+    const analyse = await analysiereArbeitsblatt(result.rows[0].pdf_pfad, result.rows[0].fach);
+
+    await query(
+      'UPDATE arbeiten SET musterloesung = $1, max_punkte = $2, updated_at = NOW() WHERE id = $3',
+      [JSON.stringify(analyse), analyse.empfohlene_max_punkte, req.params.id]
+    );
+
+    return res.json(analyse);
+  } catch (err: any) {
+    console.error('POST /arbeiten/:id/analysieren error:', err);
+    return res.status(500).json({ error: err.message || 'Analyse fehlgeschlagen' });
   }
 });
 

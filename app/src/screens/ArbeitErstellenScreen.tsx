@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import { useRouter } from 'expo-router';
-import { getKlassen, getSchueler, createArbeit, uploadArbeitPdf, generateArbeitPdfs } from '../services/api';
+import { getKlassen, getSchueler, createArbeit, uploadArbeitPdf, generateArbeitPdfs, analysiereArbeit } from '../services/api';
 import { useAuthStore } from '../store/auth';
 import { Klasse, Schueler } from '../types';
 
@@ -34,7 +34,7 @@ function getKlassenDisplay(k: Klasse): string {
   return k.maskottchen ? `${name} (${k.maskottchen})` : name;
 }
 
-type Step = 'details' | 'pdf_position' | 'schueler';
+type Step = 'details' | 'analyse' | 'pdf_position' | 'schueler';
 
 export function ArbeitErstellenScreen() {
   const router = useRouter();
@@ -53,7 +53,11 @@ export function ArbeitErstellenScreen() {
   const [creating, setCreating] = useState(false);
   const [arbeitId, setArbeitId] = useState<number | null>(null);
 
-  // Step 2: QR Position
+  // Step Analyse
+  const [analyse, setAnalyse] = useState<any>(null);
+  const [analysing, setAnalysing] = useState(false);
+
+  // Step QR Position
   const [qrX, setQrX] = useState(75); // percentage
   const [qrY, setQrY] = useState(5);  // percentage
   const previewWidth = SCREEN_WIDTH - 48;
@@ -125,9 +129,18 @@ export function ArbeitErstellenScreen() {
       // Upload PDF if selected
       if (pdfUri && pdfName) {
         await uploadArbeitPdf(arbeit.id, pdfUri, pdfName);
-        setStep('pdf_position');
+        // Start analysis
+        setStep('analyse');
+        setAnalysing(true);
+        try {
+          const result = await analysiereArbeit(arbeit.id);
+          setAnalyse(result);
+        } catch (e: any) {
+          Alert.alert('Hinweis', 'Automatische Analyse nicht moeglich. Du kannst trotzdem fortfahren.');
+        } finally {
+          setAnalysing(false);
+        }
       } else {
-        // No PDF - skip to done
         Alert.alert('Erstellt', 'Arbeit ohne PDF angelegt.', [{ text: 'OK', onPress: () => router.back() }]);
       }
     } catch (e: any) {
@@ -179,6 +192,58 @@ export function ArbeitErstellenScreen() {
     return <SafeAreaView style={styles.container}><ActivityIndicator color="#3b82f6" size="large" style={{ marginTop: 100 }} /></SafeAreaView>;
   }
 
+  // ===== STEP: Analyse =====
+  if (step === 'analyse') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Pressable onPress={() => setStep('details')}><Text style={styles.backText}>← Zurueck</Text></Pressable>
+          <Text style={styles.headerTitle}>KI-Analyse</Text>
+          <Text style={styles.stepText}>2/4</Text>
+        </View>
+        <ScrollView style={styles.scroll} contentContainerStyle={{ paddingBottom: 40 }}>
+          {analysing ? (
+            <View style={{ alignItems: 'center', marginTop: 60, gap: 16 }}>
+              <ActivityIndicator color="#3b82f6" size="large" />
+              <Text style={{ color: '#94a3b8', fontSize: 15 }}>KI analysiert das Arbeitsblatt...</Text>
+              <Text style={{ color: '#64748b', fontSize: 13 }}>Aufgaben und Loesungen werden erkannt</Text>
+            </View>
+          ) : analyse ? (
+            <>
+              <Text style={styles.hint}>{analyse.zusammenfassung}</Text>
+              <View style={{ backgroundColor: '#1e293b', borderRadius: 12, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#10b981' }}>
+                <Text style={{ color: '#10b981', fontSize: 14, fontWeight: '700' }}>
+                  {analyse.aufgaben?.length || 0} Aufgaben erkannt · {analyse.empfohlene_max_punkte || 0} Punkte empfohlen
+                </Text>
+              </View>
+              {analyse.aufgaben?.map((a: any, i: number) => (
+                <View key={i} style={{ backgroundColor: '#1e293b', borderRadius: 10, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: '#334155' }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <Text style={{ color: '#3b82f6', fontSize: 13, fontWeight: '700' }}>Aufgabe {a.nummer}</Text>
+                    <Text style={{ color: '#f59e0b', fontSize: 12 }}>{a.max_punkte}P · {a.typ}</Text>
+                  </View>
+                  <Text style={{ color: '#f1f5f9', fontSize: 14, marginBottom: 6 }}>{a.beschreibung}</Text>
+                  <Text style={{ color: '#10b981', fontSize: 12 }}>
+                    Loesung: {typeof a.loesungen === 'string' ? a.loesungen : JSON.stringify(a.loesungen)}
+                  </Text>
+                </View>
+              ))}
+            </>
+          ) : (
+            <View style={{ alignItems: 'center', marginTop: 60 }}>
+              <Text style={{ color: '#94a3b8', fontSize: 15 }}>Keine Analyse verfuegbar</Text>
+            </View>
+          )}
+        </ScrollView>
+        <View style={styles.footer}>
+          <Pressable style={styles.submitBtn} onPress={() => setStep('pdf_position')}>
+            <Text style={styles.submitText}>Weiter → QR-Code platzieren</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   // ===== STEP 3: Schueler auswaehlen =====
   if (step === 'schueler') {
     return (
@@ -186,7 +251,7 @@ export function ArbeitErstellenScreen() {
         <View style={styles.header}>
           <Pressable onPress={() => setStep('pdf_position')}><Text style={styles.backText}>← Zurueck</Text></Pressable>
           <Text style={styles.headerTitle}>Schueler auswaehlen</Text>
-          <Text style={styles.stepText}>3/3</Text>
+          <Text style={styles.stepText}>4/4</Text>
         </View>
         <ScrollView style={styles.scroll} contentContainerStyle={{ paddingBottom: 40 }}>
           <Text style={styles.hint}>{selectedSchueler.size} von {schueler.length} ausgewaehlt</Text>
@@ -231,9 +296,9 @@ export function ArbeitErstellenScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <Pressable onPress={() => setStep('details')}><Text style={styles.backText}>← Zurueck</Text></Pressable>
+          <Pressable onPress={() => setStep('analyse')}><Text style={styles.backText}>← Zurueck</Text></Pressable>
           <Text style={styles.headerTitle}>QR-Code platzieren</Text>
-          <Text style={styles.stepText}>2/3</Text>
+          <Text style={styles.stepText}>3/4</Text>
         </View>
         <View style={{ flex: 1, padding: 12 }}>
           <Text style={styles.hint}>Ziehe den QR-Code an die gewuenschte Position</Text>
@@ -275,7 +340,7 @@ export function ArbeitErstellenScreen() {
       <View style={styles.header}>
         <Pressable onPress={() => router.back()}><Text style={styles.backText}>← Zurueck</Text></Pressable>
         <Text style={styles.headerTitle}>Arbeit erstellen</Text>
-        <Text style={styles.stepText}>1/3</Text>
+        <Text style={styles.stepText}>1/4</Text>
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={{ paddingBottom: 40 }}>
