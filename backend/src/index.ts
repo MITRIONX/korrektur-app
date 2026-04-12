@@ -4,6 +4,8 @@ import helmet from 'helmet';
 import path from 'path';
 import { config } from './config';
 import authRoutes from './routes/auth';
+import klassenRoutes from './routes/klassen';
+import schuelerRoutes from './routes/schueler';
 
 const app = express();
 
@@ -26,6 +28,12 @@ app.get('/api/health', (_req, res) => {
 
 // Auth routes
 app.use('/api/auth', authRoutes);
+
+// Klassen routes
+app.use('/api/klassen', klassenRoutes);
+
+// Schueler routes (nested under klassen)
+app.use('/api/klassen/:klasseId/schueler', schuelerRoutes);
 
 // Start server only when run directly
 if (require.main === module) {
