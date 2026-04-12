@@ -36,14 +36,16 @@ export async function korrigiereSeite(
     try {
       const analyse = JSON.parse(musterloesung);
       if (analyse.aufgaben && Array.isArray(analyse.aufgaben)) {
-        aufgabenInfo = '\n\n=== AUFGABEN UND KORREKTE LOESUNGEN ===\n';
+        aufgabenInfo = '\n\n=== PRUEFANWEISUNGEN PRO AUFGABE ===\n';
         for (const a of analyse.aufgaben) {
-          aufgabenInfo += `\nAufgabe ${a.nummer}: ${a.beschreibung}\n`;
-          aufgabenInfo += `Typ: ${a.typ}\n`;
-          aufgabenInfo += `Max. Punkte: ${a.max_punkte}\n`;
+          aufgabenInfo += `\n--- Aufgabe ${a.nummer} (${a.typ}, ${a.max_punkte} Punkte) ---\n`;
+          if (a.pruef_prompt) {
+            aufgabenInfo += `PRUEFANWEISUNG: ${a.pruef_prompt}\n`;
+          }
+          aufgabenInfo += `Beschreibung: ${a.beschreibung}\n`;
           aufgabenInfo += `Korrekte Loesung: ${typeof a.loesungen === 'string' ? a.loesungen : JSON.stringify(a.loesungen)}\n`;
         }
-        aufgabenInfo += '\n=== ENDE LOESUNGEN ===\n';
+        aufgabenInfo += '\n=== ENDE PRUEFANWEISUNGEN ===\n';
       }
     } catch {
       // Plain text musterloesung

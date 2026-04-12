@@ -114,8 +114,8 @@ export const deleteArbeit = async (arbeitId: number): Promise<void> => {
   await apiClient.delete(`/arbeiten/${arbeitId}`);
 };
 
-export const analysiereArbeit = async (arbeitId: number): Promise<any> => {
-  const res = await apiClient.post(`/arbeiten/${arbeitId}/analysieren`);
+export const analysiereArbeit = async (arbeitId: number, hinweis?: string): Promise<any> => {
+  const res = await apiClient.post(`/arbeiten/${arbeitId}/analysieren`, { hinweis });
   return res.data;
 };
 

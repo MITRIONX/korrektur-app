@@ -328,6 +328,8 @@ router.post('/:id/upload-pdf', pdfUpload.single('pdf'), async (req: AuthRequest,
 
 // POST /:id/analysieren - manually trigger PDF analysis
 router.post('/:id/analysieren', async (req: AuthRequest, res: Response) => {
+  const { hinweis } = req.body as { hinweis?: string };
+
   try {
     const result = await query(
       `SELECT a.* FROM arbeiten a JOIN klassen k ON a.klasse_id = k.id WHERE a.id = $1 AND k.user_id = $2`,
@@ -336,7 +338,7 @@ router.post('/:id/analysieren', async (req: AuthRequest, res: Response) => {
     if (result.rows.length === 0) return res.status(404).json({ error: 'Arbeit not found' });
     if (!result.rows[0].pdf_pfad) return res.status(400).json({ error: 'Kein PDF hochgeladen' });
 
-    const analyse = await analysiereArbeitsblatt(result.rows[0].pdf_pfad, result.rows[0].fach);
+    const analyse = await analysiereArbeitsblatt(result.rows[0].pdf_pfad, result.rows[0].fach, hinweis);
 
     await query(
       'UPDATE arbeiten SET musterloesung = $1, max_punkte = $2, updated_at = NOW() WHERE id = $3',

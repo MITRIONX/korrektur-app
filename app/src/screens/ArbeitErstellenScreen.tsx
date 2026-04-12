@@ -200,6 +200,8 @@ export function ArbeitErstellenScreen() {
   const [editFreiKriterien, setEditFreiKriterien] = useState('');
   const [editLeftHeader, setEditLeftHeader] = useState('');
   const [editRightHeader, setEditRightHeader] = useState('');
+  const [editPruefPrompt, setEditPruefPrompt] = useState('');
+  const [reAnalyseHinweis, setReAnalyseHinweis] = useState('');
 
   const AUFGABEN_TYPEN = ['einkreisen', 'unterstreichen', 'zuordnung', 'lueckentext', 'konjugation', 'definition', 'rechnung', 'ankreuzen', 'schreiben', 'zeichnen', 'frei'];
 
@@ -214,6 +216,7 @@ export function ArbeitErstellenScreen() {
     setEditBeschreibung(a.beschreibung || '');
     setEditPunkte(String(a.max_punkte || 0));
     setEditTyp(a.typ || '');
+    setEditPruefPrompt(a.pruef_prompt || '');
 
     // Detect answer format
     if (a.typ === 'frei' || a.typ === 'definition') {
@@ -284,6 +287,7 @@ export function ArbeitErstellenScreen() {
       max_punkte: parseInt(editPunkte, 10) || 0,
       typ: editTyp,
       loesungen,
+      pruef_prompt: editPruefPrompt,
     };
     updated.aufgaben = aufgaben;
     updated.empfohlene_max_punkte = aufgaben.reduce((s: number, a: any) => s + (a.max_punkte || 0), 0);
@@ -437,6 +441,20 @@ export function ArbeitErstellenScreen() {
                 )}
               </>
             )}
+
+            {/* Pruef-Prompt */}
+            <Text style={[styles.label, { marginTop: 24 }]}>KI-PRUEFANWEISUNG</Text>
+            <Text style={{ color: '#64748b', fontSize: 12, marginBottom: 8 }}>
+              Dieser Prompt wird der KI beim Korrigieren uebergeben. Du kannst ihn anpassen.
+            </Text>
+            <TextInput
+              style={[styles.input, { height: 120, textAlignVertical: 'top', fontSize: 13, lineHeight: 18 }]}
+              value={editPruefPrompt}
+              onChangeText={setEditPruefPrompt}
+              multiline
+              placeholder="z.B. Pruefe ob alle 8 Verben rot eingekreist sind. Pro korrektes Verb 1 Punkt. Falsch markierte Woerter = 0 Punkte."
+              placeholderTextColor="#64748b"
+            />
           </ScrollView>
         </SafeAreaView>
       );
@@ -480,13 +498,50 @@ export function ArbeitErstellenScreen() {
                   <Text style={{ color: '#10b981', fontSize: 12 }}>
                     Loesung: {typeof a.loesungen === 'string' ? a.loesungen : JSON.stringify(a.loesungen)}
                   </Text>
+                  {a.pruef_prompt && (
+                    <Text style={{ color: '#f59e0b', fontSize: 11, marginTop: 6 }} numberOfLines={2}>
+                      🤖 {a.pruef_prompt}
+                    </Text>
+                  )}
                   <Text style={{ color: '#64748b', fontSize: 11, marginTop: 4 }}>Tippen zum Bearbeiten ✏️</Text>
                 </Pressable>
               ))}
               <Pressable onPress={addAufgabe}
-                style={{ backgroundColor: '#1e293b', borderRadius: 10, padding: 14, borderWidth: 1, borderColor: '#3b82f6', borderStyle: 'dashed', alignItems: 'center' }}>
+                style={{ backgroundColor: '#1e293b', borderRadius: 10, padding: 14, borderWidth: 1, borderColor: '#3b82f6', borderStyle: 'dashed', alignItems: 'center', marginBottom: 16 }}>
                 <Text style={{ color: '#3b82f6', fontSize: 14, fontWeight: '600' }}>+ Aufgabe hinzufuegen</Text>
               </Pressable>
+
+              {/* Re-analyse */}
+              <View style={{ backgroundColor: '#1e293b', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#334155' }}>
+                <Text style={{ color: '#94a3b8', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', marginBottom: 8 }}>Erneut analysieren</Text>
+                <TextInput
+                  style={[styles.input, { height: 60, textAlignVertical: 'top', fontSize: 13 }]}
+                  value={reAnalyseHinweis}
+                  onChangeText={setReAnalyseHinweis}
+                  placeholder="Hinweis fuer die KI (z.B. 'Aufgabe 4 hat 6 Paare, nicht 3')"
+                  placeholderTextColor="#64748b"
+                  multiline
+                />
+                <Pressable
+                  style={[styles.submitBtn, { marginTop: 8, backgroundColor: '#f59e0b' }, analysing && { opacity: 0.5 }]}
+                  onPress={async () => {
+                    setAnalysing(true);
+                    try {
+                      const result = await analysiereArbeit(arbeitId!, reAnalyseHinweis || undefined);
+                      setAnalyse(result);
+                      setReAnalyseHinweis('');
+                    } catch (e: any) {
+                      Alert.alert('Fehler', e?.response?.data?.error || e?.message);
+                    } finally {
+                      setAnalysing(false);
+                    }
+                  }}
+                  disabled={analysing}
+                >
+                  {analysing ? <ActivityIndicator color="#fff" /> :
+                    <Text style={styles.submitText}>🔄 KI neu analysieren lassen</Text>}
+                </Pressable>
+              </View>
             </>
           ) : (
             <View style={{ alignItems: 'center', marginTop: 60 }}>
