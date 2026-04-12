@@ -30,6 +30,17 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+// Response interceptor: auto-logout on 401
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error?.response?.status === 401) {
+      useAuthStore.getState().logout();
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Auth
 export const login = async (email: string, password: string): Promise<{ token: string; user: User }> => {
   const res = await apiClient.post('/auth/login', { email, password });

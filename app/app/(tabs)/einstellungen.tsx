@@ -24,7 +24,7 @@ export default function EinstellungenScreen() {
           <Text style={styles.email}>{user?.email ?? '–'}</Text>
         </View>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={logout} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.logoutButton} onPress={() => { logout(); }} activeOpacity={0.8}>
           <Text style={styles.logoutText}>Abmelden</Text>
         </TouchableOpacity>
       </View>

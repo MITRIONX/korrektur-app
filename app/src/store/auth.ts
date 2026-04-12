@@ -34,13 +34,28 @@ export const useAuthStore = create<AuthState>((set) => ({
       const token = await SecureStore.getItemAsync(TOKEN_KEY);
       const userJson = await SecureStore.getItemAsync(USER_KEY);
       if (token && userJson) {
-        set({ token, user: JSON.parse(userJson) });
-      } else if (token) {
-        // Token without user data - clear it
+        // Validate token against API
+        const res = await fetch('http://46.225.218.211:3100/api/klassen', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          set({ token, user: JSON.parse(userJson) });
+        } else {
+          // Token invalid - clear everything
+          await SecureStore.deleteItemAsync(TOKEN_KEY);
+          await SecureStore.deleteItemAsync(USER_KEY);
+        }
+      } else {
+        // Clean up partial data
         await SecureStore.deleteItemAsync(TOKEN_KEY);
+        await SecureStore.deleteItemAsync(USER_KEY);
       }
     } catch {
-      // SecureStore not available or key not found - stay logged out
+      // Network error or SecureStore issue - clear and start fresh
+      try {
+        await SecureStore.deleteItemAsync(TOKEN_KEY);
+        await SecureStore.deleteItemAsync(USER_KEY);
+      } catch {}
     }
   },
 }));
