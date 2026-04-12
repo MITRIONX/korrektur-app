@@ -193,17 +193,17 @@ export function ArbeitErstellenScreen() {
     }
   };
 
-  if (loading) {
-    return <SafeAreaView style={styles.container}><ActivityIndicator color="#3b82f6" size="large" style={{ marginTop: 100 }} /></SafeAreaView>;
-  }
-
-  // Aufgabe edit state
+  // Aufgabe edit state (MUST be before any early returns - Rules of Hooks)
   const [editAnswers, setEditAnswers] = useState<string[]>([]);
   const [editPairs, setEditPairs] = useState<{ left: string; right: string }[]>([]);
   const [editIsFrei, setEditIsFrei] = useState(false);
   const [editFreiKriterien, setEditFreiKriterien] = useState('');
 
   const AUFGABEN_TYPEN = ['einkreisen', 'unterstreichen', 'zuordnung', 'lueckentext', 'konjugation', 'definition', 'rechnung', 'ankreuzen', 'schreiben', 'zeichnen', 'frei'];
+
+  if (loading) {
+    return <SafeAreaView style={styles.container}><ActivityIndicator color="#3b82f6" size="large" style={{ marginTop: 100 }} /></SafeAreaView>;
+  }
 
   const openEditAufgabe = (idx: number) => {
     const a = analyse?.aufgaben?.[idx];
