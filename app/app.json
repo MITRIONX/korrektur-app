@@ -3,7 +3,7 @@
     "name": "Korrektur-App",
     "slug": "korrektur-app",
     "scheme": "korrekturapp",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -23,6 +23,7 @@
       },
       "package": "de.syntrokids.korrektur",
       "permissions": ["android.permission.CAMERA"],
+      "usesCleartextTraffic": true,
       "edgeToEdgeEnabled": true
     },
     "web": {
