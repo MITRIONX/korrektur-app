@@ -8,12 +8,16 @@ export interface AuthRequest extends Request {
 
 export function authMiddleware(req: AuthRequest, res: Response, next: NextFunction) {
   const header = req.headers.authorization;
-  if (!header?.startsWith('Bearer ')) {
+  const queryToken = req.query.token as string | undefined;
+
+  const token = header?.startsWith('Bearer ') ? header.slice(7) : queryToken;
+
+  if (!token) {
     return res.status(401).json({ error: 'Token required' });
   }
 
   try {
-    const payload = jwt.verify(header.slice(7), config.jwtSecret) as { userId: number };
+    const payload = jwt.verify(token, config.jwtSecret) as { userId: number };
     req.userId = payload.userId;
     next();
   } catch {
