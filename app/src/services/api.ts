@@ -11,8 +11,8 @@ import {
 } from '../types';
 
 const BASE_URL = __DEV__
-  ? 'http://10.0.2.2:3000/api'
-  : 'https://syntrokids.de/api';
+  ? 'http://10.0.2.2:3100/api'
+  : 'http://46.225.218.211:3100/api';
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
