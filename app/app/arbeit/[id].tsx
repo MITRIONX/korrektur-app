@@ -5,11 +5,11 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   Alert,
   ActivityIndicator,
   Linking,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { getArbeit, getScans, triggerKorrektur, deleteArbeit, downloadArbeitPdf } from '../../src/services/api';
 import type { Arbeit, ScanSeite } from '../../src/types';
