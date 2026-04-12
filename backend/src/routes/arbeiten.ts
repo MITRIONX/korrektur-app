@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { query } from '../db';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
+import { generateQrSheet } from '../services/qr';
 
 const router = Router();
 
@@ -155,6 +156,42 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     return res.json(result.rows[0]);
   } catch (err) {
     console.error('PUT /arbeiten/:id error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /:id/qr-codes - generate QR code sheet for all students in the arbeit's klasse
+router.get('/:id/qr-codes', async (req: AuthRequest, res: Response) => {
+  try {
+    // Verify arbeit belongs to user (join klassen for user_id check) and get klasse_id
+    const arbeitResult = await query(
+      `SELECT a.id, a.klasse_id FROM arbeiten a
+       JOIN klassen k ON a.klasse_id = k.id
+       WHERE a.id = $1 AND k.user_id = $2`,
+      [req.params.id, req.userId]
+    );
+    if (arbeitResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Arbeit not found' });
+    }
+
+    const arbeit = arbeitResult.rows[0];
+
+    // Get all students for the arbeit's klasse
+    const studentResult = await query(
+      `SELECT id, vorname, nachname FROM schueler
+       WHERE klasse_id = $1
+       ORDER BY nachname, vorname`,
+      [arbeit.klasse_id]
+    );
+
+    // Parse ?pages query param (default 2)
+    const pagesParam = req.query.pages as string | undefined;
+    const pages = pagesParam ? parseInt(pagesParam, 10) : 2;
+
+    const html = await generateQrSheet(arbeit.id, studentResult.rows, pages);
+    return res.type('html').send(html);
+  } catch (err) {
+    console.error('GET /arbeiten/:id/qr-codes error:', err);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

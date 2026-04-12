@@ -84,4 +84,30 @@ describe('Arbeiten routes', () => {
       expect(res.body.status).toBe('scannen');
     });
   });
+
+  describe('GET /api/arbeiten/:id/qr-codes', () => {
+    it('returns HTML with QR codes for all students', async () => {
+      // Create an arbeit
+      const arbeitRes = await request(app)
+        .post('/api/arbeiten')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ klasse_id: klasseId, fach: 'Kunst', titel: 'QR-Test', max_punkte: 10 });
+      const arbeitId = arbeitRes.body.id;
+
+      // Add a student to the klasse
+      await query(
+        `INSERT INTO schueler (klasse_id, vorname, nachname) VALUES ($1, $2, $3)`,
+        [klasseId, 'Max', 'Mustermann']
+      );
+
+      const res = await request(app)
+        .get(`/api/arbeiten/${arbeitId}/qr-codes?pages=2`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.type).toMatch(/html/);
+      expect(res.text).toContain('Max');
+      expect(res.text).toContain('Mustermann');
+    });
+  });
 });
