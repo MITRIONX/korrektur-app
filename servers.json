@@ -1,0 +1,1622 @@
+{
+ "servers": [
+  {
+   "id": 123322225,
+   "name": "db04-fo",
+   "status": "running",
+   "server_type": {
+    "id": 97,
+    "name": "ccx23",
+    "architecture": "x86",
+    "cores": 4,
+    "cpu_type": "dedicated",
+    "category": "general_purpose",
+    "deprecated": false,
+    "deprecation": null,
+    "description": "CCX23 Dedicated CPU",
+    "disk": 160,
+    "memory": 16,
+    "prices": [
+     {
+      "location": "ash",
+      "price_hourly": {
+       "gross": "0.0545000000000000",
+       "net": "0.0545000000"
+      },
+      "price_monthly": {
+       "gross": "33.9900000000000000",
+       "net": "33.9900000000"
+      },
+      "included_traffic": 2199023255552,
+      "price_per_tb_traffic": {
+       "gross": "1.0000000000000000",
+       "net": "1.0000000000"
+      }
+     },
+     {
+      "location": "fsn1",
+      "price_hourly": {
+       "gross": "0.0505000000000000",
+       "net": "0.0505000000"
+      },
+      "price_monthly": {
+       "gross": "31.4900000000000000",
+       "net": "31.4900000000"
+      },
+      "included_traffic": 21990232555520,
+      "price_per_tb_traffic": {
+       "gross": "1.0000000000000000",
+       "net": "1.0000000000"
+      }
+     },
+     {
+      "location": "hel1",
+      "price_hourly": {
+       "gross": "0.0505000000000000",
+       "net": "0.0505000000"
+      },
+      "price_monthly": {
+       "gross": "31.4900000000000000",
+       "net": "31.4900000000"
+      },
+      "included_traffic": 21990232555520,
+      "price_per_tb_traffic": {
+       "gross": "1.0000000000000000",
+       "net": "1.0000000000"
+      }
+     },
+     {
+      "location": "hil",
+      "price_hourly": {
+       "gross": "0.0545000000000000",
+       "net": "0.0545000000"
+      },
+      "price_monthly": {
+       "gross": "33.9900000000000000",
+       "net": "33.9900000000"
+      },
+      "included_traffic": 2199023255552,
+      "price_per_tb_traffic": {
+       "gross": "1.0000000000000000",
+       "net": "1.0000000000"
+      }
+     },
+     {
+      "location": "nbg1",
+      "price_hourly": {
+       "gross": "0.0505000000000000",
+       "net": "0.0505000000"
+      },
+      "price_monthly": {
+       "gross": "31.4900000000000000",
+       "net": "31.4900000000"
+      },
+      "included_traffic": 21990232555520,
+      "price_per_tb_traffic": {
+       "gross": "1.0000000000000000",
+       "net": "1.0000000000"
+      }
+     },
+     {
+      "location": "sin",
+      "price_hourly": {
+       "gross": "0.0825000000000000",
+       "net": "0.0825000000"
+      },
+      "price_monthly": {
+       "gross": "51.4900000000000000",
+       "net": "51.4900000000"
+      },
+      "included_traffic": 2199023255552,
+      "price_per_tb_traffic": {
+       "gross": "7.4000000000000000",
+       "net": "7.4000000000"
+      }
+     }
+    ],
+    "storage_type": "local",
+    "locations": [
+     {
+      "id": 1,
+      "name": "fsn1",
+      "available": true,
+      "recommended": false,
+      "deprecation": null
+     },
+     {
+      "id": 2,
+      "name": "nbg1",
+      "available": true,
+      "recommended": false,
+      "deprecation": null
+     },
+     {
+      "id": 3,
+      "name": "hel1",
+      "available": true,
+      "recommended": true,
+      "deprecation": null
+     },
+     {
+      "id": 4,
+      "name": "ash",
+      "available": true,
+      "recommended": false,
+      "deprecation": null
+     },
+     {
+      "id": 5,
+      "name": "hil",
+      "available": true,
+      "recommended": false,
+      "deprecation": null
+     },
+     {
+      "id": 6,
+      "name": "sin",
+      "available": true,
+      "recommended": false,
+      "deprecation": null
+     }
+    ]
+   },
+   "datacenter": {
+    "id": 3,
+    "description": "Helsinki 1 virtual DC 2",
+    "location": {
+     "id": 3,
+     "name": "hel1",
+     "description": "Helsinki DC Park 1",
+     "city": "Helsinki",
+     "country": "FI",
+     "latitude": 60.169855,
+     "longitude": 24.938379,
+     "network_zone": "eu-central"
+    },
+    "name": "hel1-dc2",
+    "server_types": {
+     "available": [
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      45,
+      93,
+      94,
+      96,
+      97,
+      98,
+      99,
+      100,
+      101,
+      102,
+      104,
+      105,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117
+     ],
+     "available_for_migration": [
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      45,
+      93,
+      94,
+      96,
+      97,
+      98,
+      99,
+      100,
+      101,
+      102,
+      104,
+      105,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117
+     ],
+     "supported": [
+      1,
+      3,
+      5,
+      7,
+      9,
+      11,
+      12,
+      13,
+      14,
+      15,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      45,
+      93,
+      94,
+      95,
+      96,
+      97,
+      98,
+      99,
+      100,
+      101,
+      104,
+      105,
+      106,
+      107,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117
+     ]
+    }
+   },
+   "location": {
+    "id": 3,
+    "name": "hel1",
+    "description": "Helsinki DC Park 1",
+    "city": "Helsinki",
+    "country": "FI",
+    "latitude": 60.169855,
+    "longitude": 24.938379,
+    "network_zone": "eu-central"
+   },
+   "image": {
+    "id": 161547269,
+    "type": "system",
+    "name": "ubuntu-24.04",
+    "architecture": "x86",
+    "bound_to": null,
+    "created_from": null,
+    "deprecated": null,
+    "description": "Ubuntu 24.04",
+    "disk_size": 5,
+    "image_size": null,
+    "labels": {},
+    "os_flavor": "ubuntu",
+    "os_version": "24.04",
+    "protection": {
+     "delete": false
+    },
+    "rapid_deploy": true,
+    "status": "available",
+    "created": "2024-04-25T13:26:27Z",
+    "deleted": null
+   },
+   "iso": null,
+   "primary_disk_size": 160,
+   "labels": {
+    "env": "failover",
+    "role": "db-replica"
+   },
+   "protection": {
+    "delete": false,
+    "rebuild": false
+   },
+   "backup_window": null,
+   "rescue_enabled": false,
+   "locked": false,
+   "placement_group": null,
+   "public_net": {
+    "firewalls": [
+     {
+      "id": 10676665,
+      "status": "applied"
+     }
+    ],
+    "floating_ips": [],
+    "ipv4": {
+     "id": 121546357,
+     "ip": "204.168.140.208",
+     "blocked": false,
+     "dns_ptr": "static.208.140.168.204.clients.your-server.de"
+    },
+    "ipv6": {
+     "id": 121546358,
+     "ip": "2a01:4f9:c014:4d73::/64",
+     "blocked": false,
+     "dns_ptr": []
+    }
+   },
+   "private_net": [],
+   "load_balancers": [
+    5969980
+   ],
+   "volumes": [],
+   "included_traffic": 21990232555520,
+   "ingoing_traffic": 95375000,
+   "outgoing_traffic": 71980000,
+   "created": "2026-03-10T18:29:05Z"
+  },
+  {
+   "id": 123337364,
+   "name": "api01-fo",
+   "status": "running",
+   "server_type": {
+    "id": 109,
+    "name": "cpx22",
+    "architecture": "x86",
+    "cores": 2,
+    "cpu_type": "shared",
+    "category": "regular_purpose",
+    "deprecated": false,
+    "deprecation": null,
+    "description": "CPX 22",
+    "disk": 80,
+    "memory": 4,
+    "prices": [
+     {
+      "location": "fsn1",
+      "price_hourly": {
+       "gross": "0.0128000000000000",
+       "net": "0.0128000000"
+      },
+      "price_monthly": {
+       "gross": "7.9900000000000000",
+       "net": "7.9900000000"
+      },
+      "included_traffic": 21990232555520,
+      "price_per_tb_traffic": {
+       "gross": "1.0000000000000000",
+       "net": "1.0000000000"
+      }
+     },
+     {
+      "location": "hel1",
+      "price_hourly": {
+       "gross": "0.0128000000000000",
+       "net": "0.0128000000"
+      },
+      "price_monthly": {
+       "gross": "7.9900000000000000",
+       "net": "7.9900000000"
+      },
+      "included_traffic": 21990232555520,
+      "price_per_tb_traffic": {
+       "gross": "1.0000000000000000",
+       "net": "1.0000000000"
+      }
+     },
+     {
+      "location": "nbg1",
+      "price_hourly": {
+       "gross": "0.0128000000000000",
+       "net": "0.0128000000"
+      },
+      "price_monthly": {
+       "gross": "7.9900000000000000",
+       "net": "7.9900000000"
+      },
+      "included_traffic": 21990232555520,
+      "price_per_tb_traffic": {
+       "gross": "1.0000000000000000",
+       "net": "1.0000000000"
+      }
+     },
+     {
+      "location": "sin",
+      "price_hourly": {
+       "gross": "0.0256000000000000",
+       "net": "0.0256000000"
+      },
+      "price_monthly": {
+       "gross": "15.9900000000000000",
+       "net": "15.9900000000"
+      },
+      "included_traffic": 1099511627776,
+      "price_per_tb_traffic": {
+       "gross": "7.4000000000000000",
+       "net": "7.4000000000"
+      }
+     }
+    ],
+    "storage_type": "local",
+    "locations": [
+     {
+      "id": 1,
+      "name": "fsn1",
+      "available": true,
+      "recommended": false,
+      "deprecation": null
+     },
+     {
+      "id": 2,
+      "name": "nbg1",
+      "available": true,
+      "recommended": false,
+      "deprecation": null
+     },
+     {
+      "id": 3,
+      "name": "hel1",
+      "available": true,
+      "recommended": true,
+      "deprecation": null
+     },
+     {
+      "id": 6,
+      "name": "sin",
+      "available": true,
+      "recommended": false,
+      "deprecation": null
+     }
+    ]
+   },
+   "datacenter": {
+    "id": 3,
+    "description": "Helsinki 1 virtual DC 2",
+    "location": {
+     "id": 3,
+     "name": "hel1",
+     "description": "Helsinki DC Park 1",
+     "city": "Helsinki",
+     "country": "FI",
+     "latitude": 60.169855,
+     "longitude": 24.938379,
+     "network_zone": "eu-central"
+    },
+    "name": "hel1-dc2",
+    "server_types": {
+     "available": [
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      45,
+      93,
+      94,
+      96,
+      97,
+      98,
+      99,
+      100,
+      101,
+      102,
+      104,
+      105,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117
+     ],
+     "available_for_migration": [
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      45,
+      93,
+      94,
+      96,
+      97,
+      98,
+      99,
+      100,
+      101,
+      102,
+      104,
+      105,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117
+     ],
+     "supported": [
+      1,
+      3,
+      5,
+      7,
+      9,
+      11,
+      12,
+      13,
+      14,
+      15,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      45,
+      93,
+      94,
+      95,
+      96,
+      97,
+      98,
+      99,
+      100,
+      101,
+      104,
+      105,
+      106,
+      107,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117
+     ]
+    }
+   },
+   "location": {
+    "id": 3,
+    "name": "hel1",
+    "description": "Helsinki DC Park 1",
+    "city": "Helsinki",
+    "country": "FI",
+    "latitude": 60.169855,
+    "longitude": 24.938379,
+    "network_zone": "eu-central"
+   },
+   "image": {
+    "id": 161547269,
+    "type": "system",
+    "name": "ubuntu-24.04",
+    "architecture": "x86",
+    "bound_to": null,
+    "created_from": null,
+    "deprecated": null,
+    "description": "Ubuntu 24.04",
+    "disk_size": 5,
+    "image_size": null,
+    "labels": {},
+    "os_flavor": "ubuntu",
+    "os_version": "24.04",
+    "protection": {
+     "delete": false
+    },
+    "rapid_deploy": true,
+    "status": "available",
+    "created": "2024-04-25T13:26:27Z",
+    "deleted": null
+   },
+   "iso": null,
+   "primary_disk_size": 80,
+   "labels": {
+    "env": "failover",
+    "role": "app-server"
+   },
+   "protection": {
+    "delete": false,
+    "rebuild": false
+   },
+   "backup_window": null,
+   "rescue_enabled": false,
+   "locked": false,
+   "placement_group": null,
+   "public_net": {
+    "firewalls": [
+     {
+      "id": 10677726,
+      "status": "applied"
+     }
+    ],
+    "floating_ips": [],
+    "ipv4": {
+     "id": 121567111,
+     "ip": "204.168.137.154",
+     "blocked": false,
+     "dns_ptr": "static.154.137.168.204.clients.your-server.de"
+    },
+    "ipv6": {
+     "id": 121567112,
+     "ip": "2a01:4f9:c014:be5c::/64",
+     "blocked": false,
+     "dns_ptr": []
+    }
+   },
+   "private_net": [],
+   "load_balancers": [
+    5943231
+   ],
+   "volumes": [],
+   "included_traffic": 21990232555520,
+   "ingoing_traffic": 5645975000,
+   "outgoing_traffic": 355560000,
+   "created": "2026-03-10T22:00:45Z"
+  },
+  {
+   "id": 123390781,
+   "name": "admin-api-fo",
+   "status": "running",
+   "server_type": {
+    "id": 114,
+    "name": "cx23",
+    "architecture": "x86",
+    "cores": 2,
+    "cpu_type": "shared",
+    "category": "cost_optimized",
+    "deprecated": false,
+    "deprecation": null,
+    "description": "CX 23",
+    "disk": 40,
+    "memory": 4,
+    "prices": [
+     {
+      "location": "fsn1",
+      "price_hourly": {
+       "gross": "0.0064000000000000",
+       "net": "0.0064000000"
+      },
+      "price_monthly": {
+       "gross": "3.9900000000000000",
+       "net": "3.9900000000"
+      },
+      "included_traffic": 21990232555520,
+      "price_per_tb_traffic": {
+       "gross": "1.0000000000000000",
+       "net": "1.0000000000"
+      }
+     },
+     {
+      "location": "hel1",
+      "price_hourly": {
+       "gross": "0.0064000000000000",
+       "net": "0.0064000000"
+      },
+      "price_monthly": {
+       "gross": "3.9900000000000000",
+       "net": "3.9900000000"
+      },
+      "included_traffic": 21990232555520,
+      "price_per_tb_traffic": {
+       "gross": "1.0000000000000000",
+       "net": "1.0000000000"
+      }
+     },
+     {
+      "location": "nbg1",
+      "price_hourly": {
+       "gross": "0.0064000000000000",
+       "net": "0.0064000000"
+      },
+      "price_monthly": {
+       "gross": "3.9900000000000000",
+       "net": "3.9900000000"
+      },
+      "included_traffic": 21990232555520,
+      "price_per_tb_traffic": {
+       "gross": "1.0000000000000000",
+       "net": "1.0000000000"
+      }
+     }
+    ],
+    "storage_type": "local",
+    "locations": [
+     {
+      "id": 1,
+      "name": "fsn1",
+      "available": true,
+      "recommended": false,
+      "deprecation": null
+     },
+     {
+      "id": 2,
+      "name": "nbg1",
+      "available": false,
+      "recommended": false,
+      "deprecation": null
+     },
+     {
+      "id": 3,
+      "name": "hel1",
+      "available": true,
+      "recommended": true,
+      "deprecation": null
+     }
+    ]
+   },
+   "datacenter": {
+    "id": 3,
+    "description": "Helsinki 1 virtual DC 2",
+    "location": {
+     "id": 3,
+     "name": "hel1",
+     "description": "Helsinki DC Park 1",
+     "city": "Helsinki",
+     "country": "FI",
+     "latitude": 60.169855,
+     "longitude": 24.938379,
+     "network_zone": "eu-central"
+    },
+    "name": "hel1-dc2",
+    "server_types": {
+     "available": [
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      45,
+      93,
+      94,
+      96,
+      97,
+      98,
+      99,
+      100,
+      101,
+      102,
+      104,
+      105,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117
+     ],
+     "available_for_migration": [
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      45,
+      93,
+      94,
+      96,
+      97,
+      98,
+      99,
+      100,
+      101,
+      102,
+      104,
+      105,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117
+     ],
+     "supported": [
+      1,
+      3,
+      5,
+      7,
+      9,
+      11,
+      12,
+      13,
+      14,
+      15,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      45,
+      93,
+      94,
+      95,
+      96,
+      97,
+      98,
+      99,
+      100,
+      101,
+      104,
+      105,
+      106,
+      107,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117
+     ]
+    }
+   },
+   "location": {
+    "id": 3,
+    "name": "hel1",
+    "description": "Helsinki DC Park 1",
+    "city": "Helsinki",
+    "country": "FI",
+    "latitude": 60.169855,
+    "longitude": 24.938379,
+    "network_zone": "eu-central"
+   },
+   "image": {
+    "id": 161547269,
+    "type": "system",
+    "name": "ubuntu-24.04",
+    "architecture": "x86",
+    "bound_to": null,
+    "created_from": null,
+    "deprecated": null,
+    "description": "Ubuntu 24.04",
+    "disk_size": 5,
+    "image_size": null,
+    "labels": {},
+    "os_flavor": "ubuntu",
+    "os_version": "24.04",
+    "protection": {
+     "delete": false
+    },
+    "rapid_deploy": true,
+    "status": "available",
+    "created": "2024-04-25T13:26:27Z",
+    "deleted": null
+   },
+   "iso": null,
+   "primary_disk_size": 40,
+   "labels": {
+    "project": "syntrosoft",
+    "role": "admin-api-fallback"
+   },
+   "protection": {
+    "delete": false,
+    "rebuild": false
+   },
+   "backup_window": null,
+   "rescue_enabled": false,
+   "locked": false,
+   "placement_group": null,
+   "public_net": {
+    "firewalls": [
+     {
+      "id": 10677726,
+      "status": "applied"
+     }
+    ],
+    "floating_ips": [],
+    "ipv4": {
+     "id": 121651120,
+     "ip": "89.167.35.235",
+     "blocked": false,
+     "dns_ptr": "static.235.35.167.89.clients.your-server.de"
+    },
+    "ipv6": {
+     "id": 121651122,
+     "ip": "2a01:4f9:c014:7f40::/64",
+     "blocked": false,
+     "dns_ptr": []
+    }
+   },
+   "private_net": [],
+   "load_balancers": [
+    5948027
+   ],
+   "volumes": [],
+   "included_traffic": 21990232555520,
+   "ingoing_traffic": 1960900000,
+   "outgoing_traffic": 262560000,
+   "created": "2026-03-11T13:12:21Z"
+  },
+  {
+   "id": 123800189,
+   "name": "shop01-fo",
+   "status": "running",
+   "server_type": {
+    "id": 109,
+    "name": "cpx22",
+    "architecture": "x86",
+    "cores": 2,
+    "cpu_type": "shared",
+    "category": "regular_purpose",
+    "deprecated": false,
+    "deprecation": null,
+    "description": "CPX 22",
+    "disk": 80,
+    "memory": 4,
+    "prices": [
+     {
+      "location": "fsn1",
+      "price_hourly": {
+       "gross": "0.0128000000000000",
+       "net": "0.0128000000"
+      },
+      "price_monthly": {
+       "gross": "7.9900000000000000",
+       "net": "7.9900000000"
+      },
+      "included_traffic": 21990232555520,
+      "price_per_tb_traffic": {
+       "gross": "1.0000000000000000",
+       "net": "1.0000000000"
+      }
+     },
+     {
+      "location": "hel1",
+      "price_hourly": {
+       "gross": "0.0128000000000000",
+       "net": "0.0128000000"
+      },
+      "price_monthly": {
+       "gross": "7.9900000000000000",
+       "net": "7.9900000000"
+      },
+      "included_traffic": 21990232555520,
+      "price_per_tb_traffic": {
+       "gross": "1.0000000000000000",
+       "net": "1.0000000000"
+      }
+     },
+     {
+      "location": "nbg1",
+      "price_hourly": {
+       "gross": "0.0128000000000000",
+       "net": "0.0128000000"
+      },
+      "price_monthly": {
+       "gross": "7.9900000000000000",
+       "net": "7.9900000000"
+      },
+      "included_traffic": 21990232555520,
+      "price_per_tb_traffic": {
+       "gross": "1.0000000000000000",
+       "net": "1.0000000000"
+      }
+     },
+     {
+      "location": "sin",
+      "price_hourly": {
+       "gross": "0.0256000000000000",
+       "net": "0.0256000000"
+      },
+      "price_monthly": {
+       "gross": "15.9900000000000000",
+       "net": "15.9900000000"
+      },
+      "included_traffic": 1099511627776,
+      "price_per_tb_traffic": {
+       "gross": "7.4000000000000000",
+       "net": "7.4000000000"
+      }
+     }
+    ],
+    "storage_type": "local",
+    "locations": [
+     {
+      "id": 1,
+      "name": "fsn1",
+      "available": true,
+      "recommended": false,
+      "deprecation": null
+     },
+     {
+      "id": 2,
+      "name": "nbg1",
+      "available": true,
+      "recommended": false,
+      "deprecation": null
+     },
+     {
+      "id": 3,
+      "name": "hel1",
+      "available": true,
+      "recommended": true,
+      "deprecation": null
+     },
+     {
+      "id": 6,
+      "name": "sin",
+      "available": true,
+      "recommended": false,
+      "deprecation": null
+     }
+    ]
+   },
+   "datacenter": {
+    "id": 3,
+    "description": "Helsinki 1 virtual DC 2",
+    "location": {
+     "id": 3,
+     "name": "hel1",
+     "description": "Helsinki DC Park 1",
+     "city": "Helsinki",
+     "country": "FI",
+     "latitude": 60.169855,
+     "longitude": 24.938379,
+     "network_zone": "eu-central"
+    },
+    "name": "hel1-dc2",
+    "server_types": {
+     "available": [
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      45,
+      93,
+      94,
+      96,
+      97,
+      98,
+      99,
+      100,
+      101,
+      102,
+      104,
+      105,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117
+     ],
+     "available_for_migration": [
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      45,
+      93,
+      94,
+      96,
+      97,
+      98,
+      99,
+      100,
+      101,
+      102,
+      104,
+      105,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117
+     ],
+     "supported": [
+      1,
+      3,
+      5,
+      7,
+      9,
+      11,
+      12,
+      13,
+      14,
+      15,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      45,
+      93,
+      94,
+      95,
+      96,
+      97,
+      98,
+      99,
+      100,
+      101,
+      104,
+      105,
+      106,
+      107,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117
+     ]
+    }
+   },
+   "location": {
+    "id": 3,
+    "name": "hel1",
+    "description": "Helsinki DC Park 1",
+    "city": "Helsinki",
+    "country": "FI",
+    "latitude": 60.169855,
+    "longitude": 24.938379,
+    "network_zone": "eu-central"
+   },
+   "image": {
+    "id": 161547269,
+    "type": "system",
+    "name": "ubuntu-24.04",
+    "architecture": "x86",
+    "bound_to": null,
+    "created_from": null,
+    "deprecated": null,
+    "description": "Ubuntu 24.04",
+    "disk_size": 5,
+    "image_size": null,
+    "labels": {},
+    "os_flavor": "ubuntu",
+    "os_version": "24.04",
+    "protection": {
+     "delete": false
+    },
+    "rapid_deploy": true,
+    "status": "available",
+    "created": "2024-04-25T13:26:27Z",
+    "deleted": null
+   },
+   "iso": null,
+   "primary_disk_size": 80,
+   "labels": {
+    "project": "syntrosoft",
+    "role": "shop-failover"
+   },
+   "protection": {
+    "delete": false,
+    "rebuild": false
+   },
+   "backup_window": null,
+   "rescue_enabled": false,
+   "locked": false,
+   "placement_group": null,
+   "public_net": {
+    "firewalls": [
+     {
+      "id": 10704082,
+      "status": "applied"
+     }
+    ],
+    "floating_ips": [],
+    "ipv4": {
+     "id": 122256464,
+     "ip": "89.167.105.134",
+     "blocked": false,
+     "dns_ptr": "static.134.105.167.89.clients.your-server.de"
+    },
+    "ipv6": {
+     "id": 122256465,
+     "ip": "2a01:4f9:c014:7e93::/64",
+     "blocked": false,
+     "dns_ptr": []
+    }
+   },
+   "private_net": [],
+   "load_balancers": [
+    5969697
+   ],
+   "volumes": [],
+   "included_traffic": 21990232555520,
+   "ingoing_traffic": 55925000,
+   "outgoing_traffic": 319500000,
+   "created": "2026-03-16T10:54:33Z"
+  },
+  {
+   "id": 123804451,
+   "name": "wh01-fo",
+   "status": "running",
+   "server_type": {
+    "id": 109,
+    "name": "cpx22",
+    "architecture": "x86",
+    "cores": 2,
+    "cpu_type": "shared",
+    "category": "regular_purpose",
+    "deprecated": false,
+    "deprecation": null,
+    "description": "CPX 22",
+    "disk": 80,
+    "memory": 4,
+    "prices": [
+     {
+      "location": "fsn1",
+      "price_hourly": {
+       "gross": "0.0128000000000000",
+       "net": "0.0128000000"
+      },
+      "price_monthly": {
+       "gross": "7.9900000000000000",
+       "net": "7.9900000000"
+      },
+      "included_traffic": 21990232555520,
+      "price_per_tb_traffic": {
+       "gross": "1.0000000000000000",
+       "net": "1.0000000000"
+      }
+     },
+     {
+      "location": "hel1",
+      "price_hourly": {
+       "gross": "0.0128000000000000",
+       "net": "0.0128000000"
+      },
+      "price_monthly": {
+       "gross": "7.9900000000000000",
+       "net": "7.9900000000"
+      },
+      "included_traffic": 21990232555520,
+      "price_per_tb_traffic": {
+       "gross": "1.0000000000000000",
+       "net": "1.0000000000"
+      }
+     },
+     {
+      "location": "nbg1",
+      "price_hourly": {
+       "gross": "0.0128000000000000",
+       "net": "0.0128000000"
+      },
+      "price_monthly": {
+       "gross": "7.9900000000000000",
+       "net": "7.9900000000"
+      },
+      "included_traffic": 21990232555520,
+      "price_per_tb_traffic": {
+       "gross": "1.0000000000000000",
+       "net": "1.0000000000"
+      }
+     },
+     {
+      "location": "sin",
+      "price_hourly": {
+       "gross": "0.0256000000000000",
+       "net": "0.0256000000"
+      },
+      "price_monthly": {
+       "gross": "15.9900000000000000",
+       "net": "15.9900000000"
+      },
+      "included_traffic": 1099511627776,
+      "price_per_tb_traffic": {
+       "gross": "7.4000000000000000",
+       "net": "7.4000000000"
+      }
+     }
+    ],
+    "storage_type": "local",
+    "locations": [
+     {
+      "id": 1,
+      "name": "fsn1",
+      "available": true,
+      "recommended": false,
+      "deprecation": null
+     },
+     {
+      "id": 2,
+      "name": "nbg1",
+      "available": true,
+      "recommended": false,
+      "deprecation": null
+     },
+     {
+      "id": 3,
+      "name": "hel1",
+      "available": true,
+      "recommended": true,
+      "deprecation": null
+     },
+     {
+      "id": 6,
+      "name": "sin",
+      "available": true,
+      "recommended": false,
+      "deprecation": null
+     }
+    ]
+   },
+   "datacenter": {
+    "id": 3,
+    "description": "Helsinki 1 virtual DC 2",
+    "location": {
+     "id": 3,
+     "name": "hel1",
+     "description": "Helsinki DC Park 1",
+     "city": "Helsinki",
+     "country": "FI",
+     "latitude": 60.169855,
+     "longitude": 24.938379,
+     "network_zone": "eu-central"
+    },
+    "name": "hel1-dc2",
+    "server_types": {
+     "available": [
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      45,
+      93,
+      94,
+      96,
+      97,
+      98,
+      99,
+      100,
+      101,
+      102,
+      104,
+      105,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117
+     ],
+     "available_for_migration": [
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      45,
+      93,
+      94,
+      96,
+      97,
+      98,
+      99,
+      100,
+      101,
+      102,
+      104,
+      105,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117
+     ],
+     "supported": [
+      1,
+      3,
+      5,
+      7,
+      9,
+      11,
+      12,
+      13,
+      14,
+      15,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      45,
+      93,
+      94,
+      95,
+      96,
+      97,
+      98,
+      99,
+      100,
+      101,
+      104,
+      105,
+      106,
+      107,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117
+     ]
+    }
+   },
+   "location": {
+    "id": 3,
+    "name": "hel1",
+    "description": "Helsinki DC Park 1",
+    "city": "Helsinki",
+    "country": "FI",
+    "latitude": 60.169855,
+    "longitude": 24.938379,
+    "network_zone": "eu-central"
+   },
+   "image": {
+    "id": 161547269,
+    "type": "system",
+    "name": "ubuntu-24.04",
+    "architecture": "x86",
+    "bound_to": null,
+    "created_from": null,
+    "deprecated": null,
+    "description": "Ubuntu 24.04",
+    "disk_size": 5,
+    "image_size": null,
+    "labels": {},
+    "os_flavor": "ubuntu",
+    "os_version": "24.04",
+    "protection": {
+     "delete": false
+    },
+    "rapid_deploy": true,
+    "status": "available",
+    "created": "2024-04-25T13:26:27Z",
+    "deleted": null
+   },
+   "iso": null,
+   "primary_disk_size": 80,
+   "labels": {
+    "project": "syntrosoft",
+    "role": "warehouse-failover"
+   },
+   "protection": {
+    "delete": false,
+    "rebuild": false
+   },
+   "backup_window": null,
+   "rescue_enabled": false,
+   "locked": false,
+   "placement_group": null,
+   "public_net": {
+    "firewalls": [
+     {
+      "id": 10704082,
+      "status": "applied"
+     }
+    ],
+    "floating_ips": [],
+    "ipv4": {
+     "id": 122259374,
+     "ip": "204.168.140.68",
+     "blocked": false,
+     "dns_ptr": "static.68.140.168.204.clients.your-server.de"
+    },
+    "ipv6": {
+     "id": 122259375,
+     "ip": "2a01:4f9:c014:e812::/64",
+     "blocked": false,
+     "dns_ptr": []
+    }
+   },
+   "private_net": [],
+   "load_balancers": [
+    5969799
+   ],
+   "volumes": [],
+   "included_traffic": 21990232555520,
+   "ingoing_traffic": 244770000,
+   "outgoing_traffic": 172830000,
+   "created": "2026-03-16T11:22:23Z"
+  }
+ ],
+ "meta": {
+  "pagination": {
+   "last_page": 1,
+   "next_page": null,
+   "page": 1,
+   "per_page": 25,
+   "previous_page": null,
+   "total_entries": 5
+  }
+ }
+}
