@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import { useRouter } from 'expo-router';
-import { getKlassen, getSchueler, createArbeit, uploadArbeitPdf, generateArbeitPdfs, analysiereArbeit } from '../services/api';
+import { getKlassen, getSchueler, createArbeit, updateArbeit, uploadArbeitPdf, generateArbeitPdfs, analysiereArbeit } from '../services/api';
 import { useAuthStore } from '../store/auth';
 import { Klasse, Schueler } from '../types';
 
@@ -56,6 +56,11 @@ export function ArbeitErstellenScreen() {
   // Step Analyse
   const [analyse, setAnalyse] = useState<any>(null);
   const [analysing, setAnalysing] = useState(false);
+  const [editingAufgabe, setEditingAufgabe] = useState<number | null>(null);
+  const [editBeschreibung, setEditBeschreibung] = useState('');
+  const [editPunkte, setEditPunkte] = useState('');
+  const [editLoesungen, setEditLoesungen] = useState('');
+  const [editTyp, setEditTyp] = useState('');
 
   // Step QR Position
   const [qrX, setQrX] = useState(75); // percentage
@@ -192,8 +197,104 @@ export function ArbeitErstellenScreen() {
     return <SafeAreaView style={styles.container}><ActivityIndicator color="#3b82f6" size="large" style={{ marginTop: 100 }} /></SafeAreaView>;
   }
 
+  // Aufgabe edit helpers
+  const openEditAufgabe = (idx: number) => {
+    const a = analyse?.aufgaben?.[idx];
+    if (!a) return;
+    setEditingAufgabe(idx);
+    setEditBeschreibung(a.beschreibung || '');
+    setEditPunkte(String(a.max_punkte || 0));
+    setEditTyp(a.typ || '');
+    setEditLoesungen(typeof a.loesungen === 'string' ? a.loesungen : JSON.stringify(a.loesungen, null, 0));
+  };
+
+  const saveEditAufgabe = () => {
+    if (editingAufgabe === null || !analyse) return;
+    const updated = { ...analyse };
+    const aufgaben = [...updated.aufgaben];
+    let parsedLoesungen: any = editLoesungen;
+    try { parsedLoesungen = JSON.parse(editLoesungen); } catch {}
+    aufgaben[editingAufgabe] = {
+      ...aufgaben[editingAufgabe],
+      beschreibung: editBeschreibung,
+      max_punkte: parseInt(editPunkte, 10) || 0,
+      typ: editTyp,
+      loesungen: parsedLoesungen,
+    };
+    updated.aufgaben = aufgaben;
+    updated.empfohlene_max_punkte = aufgaben.reduce((s: number, a: any) => s + (a.max_punkte || 0), 0);
+    setAnalyse(updated);
+    setEditingAufgabe(null);
+    // Save to backend
+    if (arbeitId) {
+      updateArbeit(arbeitId, { musterloesung: JSON.stringify(updated), max_punkte: updated.empfohlene_max_punkte } as any).catch(() => {});
+    }
+  };
+
+  const deleteAufgabeFromAnalyse = (idx: number) => {
+    if (!analyse) return;
+    const updated = { ...analyse };
+    updated.aufgaben = updated.aufgaben.filter((_: any, i: number) => i !== idx);
+    updated.aufgaben.forEach((a: any, i: number) => { a.nummer = i + 1; });
+    updated.empfohlene_max_punkte = updated.aufgaben.reduce((s: number, a: any) => s + (a.max_punkte || 0), 0);
+    setAnalyse(updated);
+    if (arbeitId) {
+      updateArbeit(arbeitId, { musterloesung: JSON.stringify(updated), max_punkte: updated.empfohlene_max_punkte } as any).catch(() => {});
+    }
+  };
+
+  const addAufgabe = () => {
+    if (!analyse) return;
+    const updated = { ...analyse };
+    updated.aufgaben = [...updated.aufgaben, {
+      nummer: updated.aufgaben.length + 1,
+      beschreibung: 'Neue Aufgabe',
+      typ: 'schreiben',
+      loesungen: [],
+      max_punkte: 2,
+    }];
+    updated.empfohlene_max_punkte = updated.aufgaben.reduce((s: number, a: any) => s + (a.max_punkte || 0), 0);
+    setAnalyse(updated);
+  };
+
   // ===== STEP: Analyse =====
   if (step === 'analyse') {
+    // Edit modal
+    if (editingAufgabe !== null) {
+      return (
+        <SafeAreaView style={styles.container}>
+          <View style={styles.header}>
+            <Pressable onPress={() => setEditingAufgabe(null)}><Text style={styles.backText}>← Abbrechen</Text></Pressable>
+            <Text style={styles.headerTitle}>Aufgabe bearbeiten</Text>
+            <Pressable onPress={saveEditAufgabe}><Text style={{ color: '#10b981', fontSize: 15, fontWeight: '700' }}>Speichern</Text></Pressable>
+          </View>
+          <ScrollView style={styles.scroll} contentContainerStyle={{ paddingBottom: 40 }}>
+            <Text style={styles.label}>Beschreibung</Text>
+            <TextInput style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+              value={editBeschreibung} onChangeText={setEditBeschreibung} multiline placeholderTextColor="#64748b" />
+
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.label}>Max. Punkte</Text>
+                <TextInput style={styles.input} value={editPunkte} onChangeText={setEditPunkte}
+                  keyboardType="numeric" placeholderTextColor="#64748b" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.label}>Typ</Text>
+                <TextInput style={styles.input} value={editTyp} onChangeText={setEditTyp}
+                  placeholderTextColor="#64748b" />
+              </View>
+            </View>
+
+            <Text style={styles.label}>Korrekte Loesungen</Text>
+            <TextInput style={[styles.input, { height: 120, textAlignVertical: 'top', fontFamily: 'monospace', fontSize: 13 }]}
+              value={editLoesungen} onChangeText={setEditLoesungen} multiline placeholderTextColor="#64748b"
+              placeholder='["Antwort 1", "Antwort 2"] oder Freitext' />
+          </ScrollView>
+        </SafeAreaView>
+      );
+    }
+
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
@@ -210,24 +311,35 @@ export function ArbeitErstellenScreen() {
             </View>
           ) : analyse ? (
             <>
-              <Text style={styles.hint}>{analyse.zusammenfassung}</Text>
+              <Text style={styles.hint}>Tippe auf eine Aufgabe zum Bearbeiten</Text>
               <View style={{ backgroundColor: '#1e293b', borderRadius: 12, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#10b981' }}>
                 <Text style={{ color: '#10b981', fontSize: 14, fontWeight: '700' }}>
-                  {analyse.aufgaben?.length || 0} Aufgaben erkannt · {analyse.empfohlene_max_punkte || 0} Punkte empfohlen
+                  {analyse.aufgaben?.length || 0} Aufgaben · {analyse.empfohlene_max_punkte || 0} Punkte gesamt
                 </Text>
               </View>
               {analyse.aufgaben?.map((a: any, i: number) => (
-                <View key={i} style={{ backgroundColor: '#1e293b', borderRadius: 10, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: '#334155' }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                <Pressable key={i} onPress={() => openEditAufgabe(i)}
+                  style={{ backgroundColor: '#1e293b', borderRadius: 10, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: '#334155' }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                     <Text style={{ color: '#3b82f6', fontSize: 13, fontWeight: '700' }}>Aufgabe {a.nummer}</Text>
-                    <Text style={{ color: '#f59e0b', fontSize: 12 }}>{a.max_punkte}P · {a.typ}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={{ color: '#f59e0b', fontSize: 12 }}>{a.max_punkte}P · {a.typ}</Text>
+                      <Pressable onPress={() => deleteAufgabeFromAnalyse(i)} hitSlop={8}>
+                        <Text style={{ color: '#ef4444', fontSize: 14 }}>✕</Text>
+                      </Pressable>
+                    </View>
                   </View>
                   <Text style={{ color: '#f1f5f9', fontSize: 14, marginBottom: 6 }}>{a.beschreibung}</Text>
                   <Text style={{ color: '#10b981', fontSize: 12 }}>
                     Loesung: {typeof a.loesungen === 'string' ? a.loesungen : JSON.stringify(a.loesungen)}
                   </Text>
-                </View>
+                  <Text style={{ color: '#64748b', fontSize: 11, marginTop: 4 }}>Tippen zum Bearbeiten ✏️</Text>
+                </Pressable>
               ))}
+              <Pressable onPress={addAufgabe}
+                style={{ backgroundColor: '#1e293b', borderRadius: 10, padding: 14, borderWidth: 1, borderColor: '#3b82f6', borderStyle: 'dashed', alignItems: 'center' }}>
+                <Text style={{ color: '#3b82f6', fontSize: 14, fontWeight: '600' }}>+ Aufgabe hinzufuegen</Text>
+              </Pressable>
             </>
           ) : (
             <View style={{ alignItems: 'center', marginTop: 60 }}>
